@@ -24,9 +24,12 @@ interface IndexEntry {
 const PDFViewer = () => {
   const [pdfUrl, setPdfUrl] = useState<string>("");
   const [pdfName, setPdfName] = useState<string>("");
-  const [selectedText, setSelectedText] = useState("");
+  const [selectedWord, setSelectedWord] = useState("");
+  const [selectedDefinition, setSelectedDefinition] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isWaitingForWord, setIsWaitingForWord] = useState(false);
+  const [isWaitingForDefinition, setIsWaitingForDefinition] = useState(false);
   const [isDefining, setIsDefining] = useState(false);
   const [definition, setDefinition] = useState("");
   const [notes, setNotes] = useState("");
@@ -49,22 +52,29 @@ const PDFViewer = () => {
     }
   }, [navigate]);
 
-  // Add keyboard event listener for 'D' key
+  // Add keyboard event listeners for 'W' and 'D' keys
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === 'd' && selectedText && !isDefining) {
+      if (event.key.toLowerCase() === 'w' && !isWaitingForWord && !isWaitingForDefinition && !isDefining) {
         event.preventDefault();
-        setIsDefining(true);
+        setIsWaitingForWord(true);
         toast({
-          title: "Define Term",
-          description: `Ready to define: "${selectedText}"`,
+          title: "Waiting for Word",
+          description: "Select a word to define",
+        });
+      } else if (event.key.toLowerCase() === 'd' && selectedWord && !isWaitingForDefinition && !isDefining) {
+        event.preventDefault();
+        setIsWaitingForDefinition(true);
+        toast({
+          title: "Waiting for Definition",
+          description: "Select the definition text",
         });
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedText, isDefining, toast]);
+  }, [isWaitingForWord, isWaitingForDefinition, isDefining, selectedWord, toast]);
 
   const colors = [
     { name: "Yellow", value: "#fbbf24", bg: "bg-yellow-200" },
@@ -78,12 +88,25 @@ const PDFViewer = () => {
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (selection && selection.toString().length > 0) {
-      const newSelectedText = selection.toString().trim();
-      setSelectedText(newSelectedText);
-      toast({
-        title: "Text Selected",
-        description: `Selected: "${newSelectedText}" - Press 'D' to define`,
-      });
+      const selectedText = selection.toString().trim();
+      
+      if (isWaitingForWord) {
+        setSelectedWord(selectedText);
+        setIsWaitingForWord(false);
+        toast({
+          title: "Word Selected",
+          description: `Word: "${selectedText}" - Press 'D' to select definition`,
+        });
+      } else if (isWaitingForDefinition) {
+        setSelectedDefinition(selectedText);
+        setIsWaitingForDefinition(false);
+        setIsDefining(true);
+        setDefinition(selectedText);
+        toast({
+          title: "Definition Selected",
+          description: `Definition captured. Complete the entry form.`,
+        });
+      }
     }
   };
 
@@ -97,19 +120,19 @@ const PDFViewer = () => {
   };
 
   const saveDefinition = async () => {
-    if (!selectedText || !definition) {
+    if (!selectedWord || !definition) {
       toast({
         title: "Missing Information",
-        description: "Please select text and provide a definition.",
+        description: "Please select a word and provide a definition.",
         variant: "destructive",
       });
       return;
     }
 
-    const aiEnrichment = await generateAIEnrichment(selectedText);
+    const aiEnrichment = await generateAIEnrichment(selectedWord);
 
     const newEntry = {
-      word: selectedText,
+      word: selectedWord,
       definition,
       page_number: currentPage,
       book_number: bookNumber || pdfName,
@@ -121,10 +144,21 @@ const PDFViewer = () => {
     createEntry(newEntry);
 
     // Reset form
-    setSelectedText("");
+    setSelectedWord("");
+    setSelectedDefinition("");
     setDefinition("");
     setNotes("");
     setIsDefining(false);
+  };
+
+  const cancelDefining = () => {
+    setSelectedWord("");
+    setSelectedDefinition("");
+    setDefinition("");
+    setNotes("");
+    setIsDefining(false);
+    setIsWaitingForWord(false);
+    setIsWaitingForDefinition(false);
   };
 
   const highlightText = () => {
@@ -210,6 +244,20 @@ const PDFViewer = () => {
           {/* Tools Panel */}
           <div className={showDefinitions ? 'lg:col-span-2' : 'lg:col-span-1'}>
             <div className="space-y-6">
+              {/* Instructions */}
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-slate-800">Instructions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-sm text-slate-600">1. Press 'W' to start word selection</p>
+                  <p className="text-sm text-slate-600">2. Select a word in the PDF</p>
+                  <p className="text-sm text-slate-600">3. Press 'D' to select definition</p>
+                  <p className="text-sm text-slate-600">4. Select definition text in PDF</p>
+                  <p className="text-sm text-slate-600">5. Complete the form and save</p>
+                </CardContent>
+              </Card>
+
               {/* Search and Highlight */}
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
                 <CardHeader>
@@ -238,13 +286,31 @@ const PDFViewer = () => {
                 </CardContent>
               </Card>
 
-              {/* Show selected text info */}
-              {selectedText && !isDefining && (
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm border-l-4 border-l-blue-500">
+              {/* Status indicators */}
+              {isWaitingForWord && (
+                <Card className="shadow-lg border-0 bg-blue-50 border-l-4 border-l-blue-500">
                   <CardContent className="p-4">
-                    <p className="text-sm text-slate-600 mb-2">Selected text:</p>
-                    <p className="font-medium text-slate-800 mb-2">"{selectedText}"</p>
-                    <p className="text-xs text-slate-500">Press 'D' to define this term</p>
+                    <p className="text-sm font-medium text-blue-800">Waiting for word selection...</p>
+                    <p className="text-xs text-blue-600">Select a word in the PDF</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedWord && !isWaitingForDefinition && !isDefining && (
+                <Card className="shadow-lg border-0 bg-green-50 border-l-4 border-l-green-500">
+                  <CardContent className="p-4">
+                    <p className="text-sm text-green-700 mb-2">Selected word:</p>
+                    <p className="font-medium text-green-800 mb-2">"{selectedWord}"</p>
+                    <p className="text-xs text-green-600">Press 'D' to select definition</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {isWaitingForDefinition && (
+                <Card className="shadow-lg border-0 bg-orange-50 border-l-4 border-l-orange-500">
+                  <CardContent className="p-4">
+                    <p className="text-sm font-medium text-orange-800">Waiting for definition...</p>
+                    <p className="text-xs text-orange-600">Select the definition text in the PDF</p>
                   </CardContent>
                 </Card>
               )}
@@ -254,7 +320,7 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="text-slate-800">Define Term</CardTitle>
-                    <p className="text-sm text-slate-600">Selected: "{selectedText}"</p>
+                    <p className="text-sm text-slate-600">Word: "{selectedWord}"</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
@@ -315,7 +381,7 @@ const PDFViewer = () => {
                         Save
                       </Button>
                       <Button
-                        onClick={() => setIsDefining(false)}
+                        onClick={cancelDefining}
                         variant="outline"
                         className="flex-1"
                       >
