@@ -4,6 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 type IndexEntry = Tables<'index_entries'>;
 
@@ -18,6 +20,28 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ entries, onClo
   const [shuffledEntries, setShuffledEntries] = useState(entries);
 
   const currentEntry = shuffledEntries[currentIndex];
+
+  // Fetch PDF file info to get course code
+  const { data: pdfFile } = useQuery({
+    queryKey: ['pdf_file', currentEntry?.book_number],
+    queryFn: async () => {
+      if (!currentEntry?.book_number) return null;
+      
+      const { data, error } = await supabase
+        .from('pdf_files')
+        .select('course_code, file_name')
+        .eq('book_number', currentEntry.book_number)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching PDF file:', error);
+        return null;
+      }
+      
+      return data;
+    },
+    enabled: !!currentEntry?.book_number,
+  });
 
   const nextCard = () => {
     setCurrentIndex((prev) => (prev + 1) % shuffledEntries.length);
@@ -84,7 +108,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ entries, onClo
                 <h2 className="text-3xl font-bold text-foreground mb-4">{currentEntry.word}</h2>
                 <p className="text-muted-foreground text-sm">Click to reveal definition</p>
                 <div className="mt-4 text-xs text-muted-foreground">
-                  Page {currentEntry.page_number} • {currentEntry.book_number}
+                  Page {currentEntry.page_number} • {currentEntry.book_number} {pdfFile?.course_code && `• ${pdfFile.course_code}`}
                 </div>
               </div>
             ) : (
@@ -100,7 +124,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ entries, onClo
                   </p>
                 )}
                 <div className="text-xs text-muted-foreground">
-                  Page {currentEntry.page_number} • {currentEntry.book_number}
+                  Page {currentEntry.page_number} • {currentEntry.book_number} {pdfFile?.course_code && `• ${pdfFile.course_code}`}
                 </div>
                 <p className="text-muted-foreground text-sm">Click to show word</p>
               </div>
