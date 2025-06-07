@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -124,38 +125,77 @@ const PDFViewer = () => {
     renderHighlightTarget,
   });
 
-  // Enhanced function to clean up selected text
+  // Enhanced function to clean up selected text using word reconstruction
   const cleanText = (text: string): string => {
     let cleaned = text;
     
     console.log('Original text:', JSON.stringify(cleaned));
     
-    // Strategy: Look for the specific pattern where EVERY character is separated by spaces
-    // This is different from normal text which has spaces only between words
+    // Common words to help with reconstruction
+    const commonWords = [
+      'attacks', 'focused', 'earning', 'money', 'generating', 'revenue', 'malicious', 'group', 'perpetrator', 'perpetrators',
+      'some', 'most', 'common', 'attack', 'methods', 'these', 'days', 'ransomware', 'both', 'against', 'organizations',
+      'individuals', 'denial', 'service', 'with', 'business', 'critical', 'data', 'encrypted', 'after', 'which',
+      'ransom', 'asked', 'allow', 'recovered', 'typical', 'technique', 'would', 'disrupt', 'online', 'presence',
+      'organization', 'stop', 'and', 'the', 'for', 'are', 'can', 'not', 'but', 'all', 'any', 'had', 'her', 'was',
+      'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see',
+      'two', 'way', 'who', 'boy', 'did', 'she', 'use', 'her', 'man', 'new', 'say', 'each', 'make', 'most', 'over',
+      'said', 'some', 'time', 'very', 'when', 'come', 'here', 'just', 'like', 'long', 'many', 'over', 'such', 'take',
+      'than', 'them', 'well', 'were'
+    ];
     
-    // First, let's check if we have the extreme case where every character is spaced
-    // Pattern: single char + space + single char + space, etc.
-    const everyCharSpacedPattern = /^(\S\s){10,}/; // At least 10 consecutive single-char-space patterns
+    // Check if text has the characteristic spacing issue (lots of single chars followed by spaces)
+    const spacedPattern = /(\w\s){8,}/; // At least 8 consecutive single-char-space patterns
     
-    if (everyCharSpacedPattern.test(cleaned)) {
-      console.log('Detected every-character-spaced pattern, applying aggressive fix...');
-      // Remove ALL single spaces between single characters
-      cleaned = cleaned.replace(/(\S)\s+(\S)/g, '$1$2');
-      // Then add back spaces only where we should have word boundaries
-      // Look for lowercase-uppercase transitions (likely word boundaries)
-      cleaned = cleaned.replace(/([a-z])([A-Z])/g, '$1 $2');
-      // Add spaces before punctuation that should be separate words
-      cleaned = cleaned.replace(/([a-zA-Z])([.,:;!?])/g, '$1$2');
-      // Add spaces after punctuation
-      cleaned = cleaned.replace(/([.,:;!?])([a-zA-Z])/g, '$1 $2');
-      // Add spaces around parentheses
-      cleaned = cleaned.replace(/([a-zA-Z])(\()/g, '$1 $2');
-      cleaned = cleaned.replace(/(\))([a-zA-Z])/g, '$1 $2');
-      // Add spaces around forward slashes
-      cleaned = cleaned.replace(/([a-zA-Z])(\/)/g, '$1$2');
-      cleaned = cleaned.replace(/(\/)([a-zA-Z])/g, '$1$2');
-      // Add spaces around hyphens in compound words like "denial-of-service"
-      cleaned = cleaned.replace(/([a-zA-Z])(-)([a-zA-Z])/g, '$1$2$3');
+    if (spacedPattern.test(cleaned)) {
+      console.log('Detected spaced text pattern, attempting reconstruction...');
+      
+      // Step 1: Remove all spaces to get the base text
+      const noSpaces = cleaned.replace(/\s+/g, '');
+      console.log('Text without spaces:', noSpaces);
+      
+      // Step 2: Try to rebuild words by matching against common words
+      let result = '';
+      let position = 0;
+      
+      while (position < noSpaces.length) {
+        let foundMatch = false;
+        
+        // Try to match common words (longest first)
+        const sortedWords = commonWords.sort((a, b) => b.length - a.length);
+        
+        for (const word of sortedWords) {
+          const substring = noSpaces.substring(position, position + word.length).toLowerCase();
+          if (substring === word.toLowerCase()) {
+            if (result && !/[\s\(\)\-\/]$/.test(result)) {
+              result += ' ';
+            }
+            result += noSpaces.substring(position, position + word.length);
+            position += word.length;
+            foundMatch = true;
+            break;
+          }
+        }
+        
+        // If no word match found, add the character and continue
+        if (!foundMatch) {
+          const char = noSpaces[position];
+          result += char;
+          
+          // Add space after punctuation or before certain characters
+          if (/[.,:;!?]/.test(char) && position < noSpaces.length - 1) {
+            result += ' ';
+          } else if (char === ')' && position < noSpaces.length - 1 && /[a-zA-Z]/.test(noSpaces[position + 1])) {
+            result += ' ';
+          } else if (char === '(' && position > 0 && /[a-zA-Z]/.test(noSpaces[position - 1])) {
+            result = result.slice(0, -1) + ' ' + char;
+          }
+          
+          position++;
+        }
+      }
+      
+      cleaned = result;
     } else {
       console.log('No extreme spacing detected, applying gentle cleanup...');
       // For normal text, just clean up excessive whitespace
@@ -164,7 +204,19 @@ const PDFViewer = () => {
         .trim(); // Remove leading/trailing spaces
     }
     
-    console.log('Cleaned text:', JSON.stringify(cleaned));
+    // Final cleanup
+    cleaned = cleaned
+      .replace(/\s+/g, ' ')
+      .trim()
+      // Fix common patterns
+      .replace(/(\w)-\s+of\s+-\s+(\w)/g, '$1-of-$2') // Fix "denial - of - service"
+      .replace(/\s+([.,:;!?])/g, '$1') // Remove space before punctuation
+      .replace(/([.,:;!?])(\w)/g, '$1 $2') // Add space after punctuation
+      .replace(/\(\s+/g, '(') // Remove space after opening parenthesis
+      .replace(/\s+\)/g, ')') // Remove space before closing parenthesis
+      .replace(/(\w)\s*\/\s*(\w)/g, '$1/$2'); // Fix spaces around slashes
+    
+    console.log('Final cleaned text:', JSON.stringify(cleaned));
     return cleaned;
   };
 
