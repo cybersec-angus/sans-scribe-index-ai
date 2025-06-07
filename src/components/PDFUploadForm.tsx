@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,9 +104,9 @@ export const PDFUploadForm = ({ onUpload, isUploading, uploadedFiles, onRemove }
   };
 
   return (
-    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+    <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-3 text-slate-800">
+        <CardTitle className="flex items-center gap-3 text-card-foreground">
           <Upload className="h-6 w-6 text-blue-600" />
           Upload PDF Files
         </CardTitle>
@@ -152,7 +153,7 @@ export const PDFUploadForm = ({ onUpload, isUploading, uploadedFiles, onRemove }
               className="mt-1"
               min="0"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Subtract this from PDF page numbers
             </p>
           </div>
@@ -172,7 +173,7 @@ export const PDFUploadForm = ({ onUpload, isUploading, uploadedFiles, onRemove }
             className="mt-2"
             disabled={isUploading}
           />
-          <p className="text-sm text-slate-500 mt-2">
+          <p className="text-sm text-muted-foreground mt-2">
             Upload multiple PDF files from your SANS course materials
           </p>
         </div>
@@ -180,20 +181,20 @@ export const PDFUploadForm = ({ onUpload, isUploading, uploadedFiles, onRemove }
         {/* Selected Files Preview */}
         {selectedFiles.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-medium text-slate-700">Selected Files:</h4>
+            <h4 className="font-medium text-card-foreground">Selected Files:</h4>
             <div className="space-y-2 max-h-32 overflow-y-auto">
               {selectedFiles.map((file, index) => (
-                <div key={index} className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg">
+                <div key={index} className="flex items-center gap-3 p-2 bg-accent rounded-lg">
                   <FileText className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-slate-700 truncate flex-1">{file.name}</span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-sm text-card-foreground truncate flex-1">{file.name}</span>
+                  <span className="text-xs text-muted-foreground">
                     {(file.size / 1024 / 1024).toFixed(1)} MB
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => removeSelectedFile(index)}
-                    className="h-6 w-6 p-0 text-slate-400 hover:text-red-500"
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -222,25 +223,25 @@ export const PDFUploadForm = ({ onUpload, isUploading, uploadedFiles, onRemove }
         {/* Uploaded Files List */}
         {uploadedFiles.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-medium text-slate-700">Uploaded Files:</h4>
+            <h4 className="font-medium text-card-foreground">Uploaded Files:</h4>
             <div className="space-y-2 max-h-32 overflow-y-auto">
               {uploadedFiles.map((file) => (
-                <div key={file.id} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
-                  <FileText className="h-4 w-4 text-slate-500" />
+                <div key={file.id} className="flex items-center gap-3 p-2 bg-muted rounded-lg">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-slate-700 truncate">{file.file_name}</div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-sm text-card-foreground truncate">{file.file_name}</div>
+                    <div className="text-xs text-muted-foreground">
                       {file.course_code || 'No course'} • {file.book_number} • Offset: {file.page_offset || 0}
                     </div>
                   </div>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted-foreground">
                     {file.file_size ? (file.file_size / 1024 / 1024).toFixed(1) + ' MB' : 'Unknown size'}
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onRemove(file.id)}
-                    className="h-6 w-6 p-0 text-slate-400 hover:text-red-500"
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                   >
                     <X className="h-3 w-3" />
                   </Button>
