@@ -8,7 +8,7 @@ const wordFrequency = new Map([
   ['be', 70], ['to', 85], ['of', 90], ['in', 75], ['is', 80], ['it', 65], ['on', 60], ['as', 55], ['at', 50], ['by', 45], ['an', 40],
   ['or', 35], ['if', 30], ['up', 25], ['so', 20], ['no', 18], ['do', 16], ['go', 14], ['we', 35], ['he', 30], ['me', 25], ['my', 20],
   
-  // Technical and cybersecurity terms
+  // Technical and cybersecurity terms - expanded with complete words
   ['attack', 85], ['attacks', 80], ['cybercrime', 75], ['cyber', 70], ['crime', 65], ['security', 60], ['data', 75], ['service', 70],
   ['services', 68], ['money', 60], ['revenue', 55], ['business', 58], ['organization', 52], ['organizations', 50], ['individual', 48],
   ['individuals', 46], ['method', 50], ['methods', 48], ['technique', 46], ['techniques', 44], ['ransomware', 85], ['denial', 75],
@@ -18,6 +18,10 @@ const wordFrequency = new Map([
   ['digital', 45], ['internet', 50], ['server', 45], ['servers', 43], ['database', 40], ['software', 45], ['hardware', 40],
   ['information', 50], ['communication', 40], ['protocol', 30], ['encryption', 45], ['firewall', 35], ['malware', 60], ['virus', 45],
   ['hacking', 50], ['breach', 45], ['vulnerability', 40], ['threat', 50], ['threats', 48], ['risk', 45], ['risks', 43],
+  
+  // Add more complete words that were being broken
+  ['against', 65], ['organization', 52], ['typical', 40], ['technique', 46], ['business', 58], ['revenue', 55],
+  ['perpetrator', 50], ['perpetrators', 48], ['generating', 45], ['recovered', 45], ['encrypted', 55],
   
   // Common words and connectors
   ['some', 50], ['these', 45], ['days', 40], ['most', 55], ['both', 50], ['against', 50], ['after', 50], ['would', 55], ['typical', 40],
@@ -29,7 +33,7 @@ const wordFrequency = new Map([
   ['show', 30], ['hear', 25], ['play', 25], ['run', 25], ['move', 25], ['live', 25], ['believe', 25], ['bring', 25], ['happen', 25],
 ]);
 
-// Enhanced validation using frequency and pattern analysis
+// Enhanced validation with better longer word detection
 const isValidWord = (word: string): boolean => {
   if (!word || word.length < 1) return false;
   
@@ -41,7 +45,7 @@ const isValidWord = (word: string): boolean => {
     return ['a', 'i'].includes(cleanWord);
   }
   
-  // Check dictionary with frequency
+  // Check dictionary with frequency - prioritize exact matches
   if (wordFrequency.has(cleanWord)) {
     return true;
   }
@@ -79,11 +83,66 @@ const isValidWord = (word: string): boolean => {
     }
   }
   
-  // Accept longer words that might be valid
+  // Accept longer words that might be valid - be more generous with longer words
   return cleanWord.length >= 4 && /^[a-z]+$/.test(cleanWord);
 };
 
-// Enhanced dynamic programming with better scoring
+// New longest-match-first algorithm
+const segmentTextLongestFirst = (text: string): string[] => {
+  const result: string[] = [];
+  let position = 0;
+  
+  while (position < text.length) {
+    let bestMatch = null;
+    let bestScore = -1;
+    
+    // Try words of different lengths, starting with longer ones
+    for (let len = Math.min(20, text.length - position); len >= 1; len--) {
+      const candidate = text.substring(position, position + len).toLowerCase();
+      
+      if (isValidWord(candidate)) {
+        let score = wordFrequency.get(candidate) || Math.max(1, 30 - len);
+        
+        // Strong bonus for exact dictionary matches
+        if (wordFrequency.has(candidate)) {
+          score += 50;
+          // Extra bonus for longer dictionary words
+          if (candidate.length >= 6) score += 30;
+          if (candidate.length >= 8) score += 20;
+        }
+        
+        // Prefer longer words significantly
+        score += len * 5;
+        
+        // Bonus for words in optimal length range
+        if (len >= 4 && len <= 12) score += 25;
+        
+        // Penalty for very short words when longer alternatives exist
+        if (len <= 3 && text.length - position > 6) score -= 20;
+        
+        if (score > bestScore) {
+          bestMatch = { word: candidate, length: len };
+          bestScore = score;
+          
+          // If we found a really good long match, take it immediately
+          if (score > 80 && len >= 6) break;
+        }
+      }
+    }
+    
+    if (bestMatch) {
+      result.push(bestMatch.word);
+      position += bestMatch.length;
+    } else {
+      // Skip single character if no word found
+      position++;
+    }
+  }
+  
+  return result;
+};
+
+// Enhanced dynamic programming with better scoring for longer words
 const segmentTextAdvanced = (text: string): string[] => {
   const n = text.length;
   const dp = Array(n + 1).fill(-Infinity);
@@ -98,21 +157,28 @@ const segmentTextAdvanced = (text: string): string[] => {
         const word = text.substring(j, i).toLowerCase();
         
         if (isValidWord(word)) {
-          // Calculate score based on word frequency and length
-          let score = wordFrequency.get(word) || Math.max(1, 25 - word.length * 2);
+          // Calculate score with heavy bias towards longer valid words
+          let score = wordFrequency.get(word) || Math.max(1, 40 - word.length * 2);
           
-          // Strong bonus for common words
-          if (wordFrequency.has(word) && wordFrequency.get(word)! > 60) {
-            score += 20;
+          // Massive bonus for exact dictionary matches
+          if (wordFrequency.has(word)) {
+            score += 100;
+            // Extra bonus for longer dictionary words
+            if (word.length >= 6) score += 50;
+            if (word.length >= 8) score += 30;
+            if (word.length >= 10) score += 20;
           }
           
-          // Bonus for optimal word lengths
-          if (word.length >= 3 && word.length <= 8) score += 15;
-          if (word.length >= 5 && word.length <= 7) score += 10;
+          // Strong bonus for optimal word lengths
+          if (word.length >= 4 && word.length <= 15) score += 40;
+          if (word.length >= 6 && word.length <= 12) score += 30;
           
-          // Penalty for very short or very long words
-          if (word.length <= 2 && i - j > 8) score -= 15;
-          if (word.length > 12) score -= 10;
+          // Penalty for very short words
+          if (word.length <= 2) score -= 30;
+          if (word.length === 1) score -= 50;
+          
+          // Bonus for longer words to prevent over-segmentation
+          score += word.length * 8;
           
           const newScore = dp[j] + score;
           
@@ -135,51 +201,12 @@ const segmentTextAdvanced = (text: string): string[] => {
     pos = parent[pos];
   }
   
-  // If we couldn't segment everything, try a different approach
+  // If we couldn't segment everything, try the longest-first approach
   if (pos > 0) {
-    return greedySegmentWithOverlap(text);
+    return segmentTextLongestFirst(text);
   }
   
   return result.filter(word => word.length > 0);
-};
-
-// Improved greedy approach with overlap detection
-const greedySegmentWithOverlap = (text: string): string[] => {
-  const result = [];
-  let position = 0;
-  
-  while (position < text.length) {
-    let bestMatch = null;
-    let bestScore = -1;
-    
-    // Try words of different lengths, prioritizing longer ones
-    for (let len = Math.min(15, text.length - position); len >= 1; len--) {
-      const candidate = text.substring(position, position + len).toLowerCase();
-      
-      if (isValidWord(candidate)) {
-        let score = wordFrequency.get(candidate) || Math.max(1, 20 - len);
-        
-        // Prefer longer words but not too long
-        if (len >= 3 && len <= 8) score += len * 3;
-        if (len >= 5 && len <= 7) score += 10;
-        
-        if (score > bestScore) {
-          bestMatch = { word: candidate, length: len };
-          bestScore = score;
-        }
-      }
-    }
-    
-    if (bestMatch) {
-      result.push(bestMatch.word);
-      position += bestMatch.length;
-    } else {
-      // Skip single character if no word found
-      position++;
-    }
-  }
-  
-  return result;
 };
 
 // Post-processing rules to fix common spacing issues
@@ -188,6 +215,21 @@ const applyPostProcessingRules = (text: string): string => {
   
   // Fix common word concatenations
   const concatenationFixes: [RegExp, string][] = [
+    // Fix specific issues from the example
+    [/\bearn in g\b/gi, 'earning'],
+    [/\bgmone y\b/gi, 'money'],
+    [/\byg ener\b/gi, 'y gener'],
+    [/\bgener at in g\b/gi, 'generating'],
+    [/\brev enue\b/gi, 'revenue'],
+    [/\bperp etra to rs\b/gi, 'perpetrators'],
+    [/\ba gains t\b/gi, 'against'],
+    [/\borgani z at ions\b/gi, 'organizations'],
+    [/\bor ganiz at i on\b/gi, 'organization'],
+    [/\bin divi duals\b/gi, 'individuals'],
+    [/\bransomw are\b/gi, 'ransomware'],
+    [/\bbus in ess\b/gi, 'business'],
+    [/\bcr it ical\b/gi, 'critical'],
+    
     // Common word pairs that get stuck together
     [/\b(data)(is)\b/gi, '$1 $2'],
     [/\b(ransom)(is)\b/gi, '$1 $2'],
@@ -252,7 +294,7 @@ const applyPostProcessingRules = (text: string): string => {
   
   // Fix over-separated words (words that got split incorrectly)
   const separationFixes: [RegExp, string][] = [
-    // Common words that get split
+    // Common words that get split - more comprehensive list
     [/\b(se rv ice)\b/gi, 'service'],
     [/\b(ser vice)\b/gi, 'service'],
     [/\b(serv ice)\b/gi, 'service'],
@@ -392,7 +434,7 @@ export const cleanSelectedText = (text: string): string => {
     return cleaned.replace(/\s+/g, ' ').trim();
   }
   
-  // Use advanced segmentation
+  // Use advanced segmentation with longest-first bias
   const segments = segmentTextAdvanced(lettersOnly);
   console.log('Segmented into', segments.length, 'words:', segments.slice(0, 10));
   
