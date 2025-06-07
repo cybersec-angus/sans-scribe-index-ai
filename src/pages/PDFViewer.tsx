@@ -128,36 +128,43 @@ const PDFViewer = () => {
   const cleanText = (text: string): string => {
     let cleaned = text;
     
-    // First, check if we have the character-separated issue (spaces between every character)
-    // Look for pattern where single characters are followed by one or more spaces
-    const spacedCharPattern = /(\w)\s+(\w)/g;
+    console.log('Original text:', JSON.stringify(cleaned));
     
-    // Count how many single character + space patterns we have vs total characters
-    const matches = [...cleaned.matchAll(spacedCharPattern)];
-    const totalNonSpaceChars = cleaned.replace(/\s/g, '').length;
+    // Strategy: Look for the specific pattern where EVERY character is separated by spaces
+    // This is different from normal text which has spaces only between words
     
-    // If more than 70% of characters are in spaced pattern, it's likely the spacing issue
-    if (matches.length > totalNonSpaceChars * 0.3) {
-      console.log('Detected spaced character pattern, fixing...');
-      // More careful approach: only remove single spaces between single characters
-      // but preserve multiple spaces and spaces around punctuation
-      cleaned = cleaned.replace(/(\w)\s(\w)/g, '$1$2');
-      // Also handle spaces around punctuation more carefully
-      cleaned = cleaned.replace(/(\w)\s+([.,;:!?])/g, '$1$2');
-      cleaned = cleaned.replace(/([.,;:!?])\s+(\w)/g, '$1 $2');
+    // First, let's check if we have the extreme case where every character is spaced
+    // Pattern: single char + space + single char + space, etc.
+    const everyCharSpacedPattern = /^(\S\s){10,}/; // At least 10 consecutive single-char-space patterns
+    
+    if (everyCharSpacedPattern.test(cleaned)) {
+      console.log('Detected every-character-spaced pattern, applying aggressive fix...');
+      // Remove ALL single spaces between single characters
+      cleaned = cleaned.replace(/(\S)\s+(\S)/g, '$1$2');
+      // Then add back spaces only where we should have word boundaries
+      // Look for lowercase-uppercase transitions (likely word boundaries)
+      cleaned = cleaned.replace(/([a-z])([A-Z])/g, '$1 $2');
+      // Add spaces before punctuation that should be separate words
+      cleaned = cleaned.replace(/([a-zA-Z])([.,:;!?])/g, '$1$2');
+      // Add spaces after punctuation
+      cleaned = cleaned.replace(/([.,:;!?])([a-zA-Z])/g, '$1 $2');
+      // Add spaces around parentheses
+      cleaned = cleaned.replace(/([a-zA-Z])(\()/g, '$1 $2');
+      cleaned = cleaned.replace(/(\))([a-zA-Z])/g, '$1 $2');
+      // Add spaces around forward slashes
+      cleaned = cleaned.replace(/([a-zA-Z])(\/)/g, '$1$2');
+      cleaned = cleaned.replace(/(\/)([a-zA-Z])/g, '$1$2');
+      // Add spaces around hyphens in compound words like "denial-of-service"
+      cleaned = cleaned.replace(/([a-zA-Z])(-)([a-zA-Z])/g, '$1$2$3');
+    } else {
+      console.log('No extreme spacing detected, applying gentle cleanup...');
+      // For normal text, just clean up excessive whitespace
+      cleaned = cleaned
+        .replace(/\s+/g, ' ') // Multiple spaces become single space
+        .trim(); // Remove leading/trailing spaces
     }
     
-    // Standard cleanup for any remaining issues
-    cleaned = cleaned
-      // Replace multiple whitespace characters (spaces, tabs, newlines) with single spaces
-      .replace(/\s+/g, ' ')
-      // Remove leading and trailing whitespace
-      .trim()
-      // Remove any weird unicode characters that might be causing issues
-      .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
-      // Clean up any remaining multiple spaces
-      .replace(/\s{2,}/g, ' ');
-    
+    console.log('Cleaned text:', JSON.stringify(cleaned));
     return cleaned;
   };
 
