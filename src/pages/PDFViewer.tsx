@@ -176,32 +176,67 @@ const PDFViewer = () => {
     renderHighlightTarget,
   });
 
-  // Enhanced function to clean up selected text with better word boundary detection
-  const handleHighlightText = (selectedText: string) => {
+  // Enhanced function to simulate native copy-paste behavior
+  const handleHighlightText = async (selectedText: string) => {
     console.log('handleHighlightText called with raw text:', selectedText);
     
-    // Clean the selected text using the new dictionary-based processor
-    const cleanedText = cleanSelectedText(selectedText);
-    console.log('Cleaned text:', cleanedText);
-    
-    if (isWaitingForWord && cleanedText) {
-      setSelectedWord(cleanedText);
-      setIsWaitingForWord(false);
+    try {
+      // First, copy the selected text to clipboard to simulate native behavior
+      await navigator.clipboard.writeText(selectedText);
       
-      toast({
-        title: "Word Selected",
-        description: `Word: "${cleanedText}" - Press 'D' to select definition`,
-      });
-    } else if (isWaitingForDefinition && cleanedText) {
-      setSelectedDefinition(cleanedText);
-      setIsWaitingForDefinition(false);
-      setIsDefining(true);
-      setDefinition(cleanedText);
+      // Then immediately read it back to get the "native" formatted version
+      const clipboardText = await navigator.clipboard.readText();
+      console.log('Text from clipboard (native format):', clipboardText);
       
-      toast({
-        title: "Definition Selected",
-        description: `Definition captured. Complete the entry form.`,
-      });
+      // Use the clipboard version as it will be properly formatted
+      const cleanedText = clipboardText.trim();
+      console.log('Final cleaned text from clipboard:', cleanedText);
+      
+      if (isWaitingForWord && cleanedText) {
+        setSelectedWord(cleanedText);
+        setIsWaitingForWord(false);
+        
+        toast({
+          title: "Word Selected",
+          description: `Word: "${cleanedText}" - Press 'D' to select definition`,
+        });
+      } else if (isWaitingForDefinition && cleanedText) {
+        setSelectedDefinition(cleanedText);
+        setIsWaitingForDefinition(false);
+        setIsDefining(true);
+        setDefinition(cleanedText);
+        
+        toast({
+          title: "Definition Selected",
+          description: `Definition captured. Complete the entry form.`,
+        });
+      }
+    } catch (error) {
+      console.error('Clipboard access failed, falling back to text processor:', error);
+      
+      // Fallback to the existing text processor if clipboard access fails
+      const cleanedText = cleanSelectedText(selectedText);
+      console.log('Fallback cleaned text:', cleanedText);
+      
+      if (isWaitingForWord && cleanedText) {
+        setSelectedWord(cleanedText);
+        setIsWaitingForWord(false);
+        
+        toast({
+          title: "Word Selected",
+          description: `Word: "${cleanedText}" - Press 'D' to select definition`,
+        });
+      } else if (isWaitingForDefinition && cleanedText) {
+        setSelectedDefinition(cleanedText);
+        setIsWaitingForDefinition(false);
+        setIsDefining(true);
+        setDefinition(cleanedText);
+        
+        toast({
+          title: "Definition Selected",
+          description: `Definition captured. Complete the entry form.`,
+        });
+      }
     }
   };
 
