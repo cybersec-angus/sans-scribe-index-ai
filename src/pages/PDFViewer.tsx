@@ -124,9 +124,21 @@ const PDFViewer = () => {
     renderHighlightTarget,
   });
 
-  // Function to clean up selected text
+  // Enhanced function to clean up selected text
   const cleanText = (text: string): string => {
-    return text
+    let cleaned = text;
+    
+    // First, check if we have the character-separated issue (spaces between every character)
+    // This pattern matches when most characters are followed by spaces
+    const spacedCharPattern = /^(.(\s+)){5,}/;
+    if (spacedCharPattern.test(cleaned)) {
+      console.log('Detected spaced character pattern, fixing...');
+      // Remove spaces between single characters, but preserve word boundaries
+      cleaned = cleaned.replace(/(\S)\s+(?=\S)/g, '$1');
+    }
+    
+    // Standard cleanup
+    cleaned = cleaned
       // Replace multiple whitespace characters (spaces, tabs, newlines) with single spaces
       .replace(/\s+/g, ' ')
       // Remove leading and trailing whitespace
@@ -135,6 +147,8 @@ const PDFViewer = () => {
       .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
       // Clean up any remaining multiple spaces
       .replace(/\s{2,}/g, ' ');
+    
+    return cleaned;
   };
 
   const handleHighlightText = (selectedText: string) => {
