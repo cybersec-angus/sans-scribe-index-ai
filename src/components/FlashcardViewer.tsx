@@ -47,7 +47,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ entries, onClo
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
         <Card className="w-full max-w-md mx-4">
           <CardContent className="p-6 text-center">
-            <p className="text-slate-600 mb-4">No definitions available for flashcards.</p>
+            <p className="text-muted-foreground mb-4">No definitions available for flashcards.</p>
             <Button onClick={onClose}>Close</Button>
           </CardContent>
         </Card>
@@ -60,7 +60,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ entries, onClo
       <div className="w-full max-w-2xl mx-4">
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
-          <div className="text-white">
+          <div className="text-foreground">
             <span className="text-sm">Card {currentIndex + 1} of {shuffledEntries.length}</span>
           </div>
           <div className="flex gap-2">
@@ -81,28 +81,28 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ entries, onClo
           <CardContent className="h-full flex flex-col justify-center items-center p-8 text-center">
             {!showDefinition ? (
               <div>
-                <h2 className="text-3xl font-bold text-slate-800 mb-4">{currentEntry.word}</h2>
-                <p className="text-slate-500 text-sm">Click to reveal definition</p>
-                <div className="mt-4 text-xs text-slate-400">
+                <h2 className="text-3xl font-bold text-foreground mb-4">{currentEntry.word}</h2>
+                <p className="text-muted-foreground text-sm">Click to reveal definition</p>
+                <div className="mt-4 text-xs text-muted-foreground">
                   Page {currentEntry.page_number} • {currentEntry.book_number}
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-slate-700">{currentEntry.word}</h3>
-                <p className="text-slate-600 leading-relaxed">{currentEntry.definition}</p>
+                <h3 className="text-xl font-semibold text-foreground">{currentEntry.word}</h3>
+                <p className="text-foreground leading-relaxed">{currentEntry.definition}</p>
                 {currentEntry.notes && (
-                  <p className="text-sm text-slate-500 italic">Notes: {currentEntry.notes}</p>
+                  <p className="text-sm text-muted-foreground italic">Notes: {currentEntry.notes}</p>
                 )}
                 {currentEntry.ai_enrichment && (
-                  <p className="text-sm text-blue-600 bg-blue-50 p-3 rounded">
+                  <p className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 p-3 rounded">
                     {currentEntry.ai_enrichment}
                   </p>
                 )}
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-muted-foreground">
                   Page {currentEntry.page_number} • {currentEntry.book_number}
                 </div>
-                <p className="text-slate-400 text-sm">Click to show word</p>
+                <p className="text-muted-foreground text-sm">Click to show word</p>
               </div>
             )}
           </CardContent>
