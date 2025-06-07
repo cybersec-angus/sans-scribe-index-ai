@@ -2,47 +2,38 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, BookOpen, FileText, Settings } from "lucide-react";
+import { Upload, FileText, Settings, BookOpen, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUserSettings } from "@/hooks/useUserSettings";
+import { useIndexEntries } from "@/hooks/useIndexEntries";
 
 const Index = () => {
-  const [watermarkEmail, setWatermarkEmail] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  const { settings, updateSettings, isUpdating } = useUserSettings();
+  const { entries } = useIndexEntries();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    const pdfFiles = files.filter(file => file.type === "application/pdf");
+    const selectedFiles = Array.from(event.target.files || []);
+    setFiles(prev => [...prev, ...selectedFiles]);
     
-    if (pdfFiles.length !== files.length) {
-      toast({
-        title: "Invalid Files",
-        description: "Please upload only PDF files.",
-        variant: "destructive",
-      });
-    }
-    
-    setUploadedFiles(prev => [...prev, ...pdfFiles]);
-    
-    if (pdfFiles.length > 0) {
-      toast({
-        title: "Files Uploaded",
-        description: `Successfully uploaded ${pdfFiles.length} PDF file(s).`,
-      });
-    }
+    toast({
+      title: "Files Uploaded",
+      description: `${selectedFiles.length} PDF file(s) uploaded successfully.`,
+    });
   };
 
-  const openPDFViewer = (file: File) => {
-    // Store file in sessionStorage for PDF viewer
-    const fileURL = URL.createObjectURL(file);
-    sessionStorage.setItem('currentPDF', fileURL);
-    sessionStorage.setItem('currentPDFName', file.name);
-    sessionStorage.setItem('watermarkEmail', watermarkEmail);
-    navigate('/pdf-viewer');
+  const handleWatermarkUpdate = (field: 'watermark_email' | 'watermark_timestamp', value: string) => {
+    if (!settings) return;
+    
+    updateSettings({
+      [field]: value,
+    });
   };
 
   return (
@@ -51,136 +42,167 @@ const Index = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-slate-900 mb-4">
-            SANS Material Indexer
+            SANS Course Material Indexer
           </h1>
-          <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-            Upload and index your SANS course PDFs with intelligent text scanning and definition management
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+            Upload your SANS PDF course materials and create a comprehensive, searchable index 
+            of definitions with AI-powered enrichment and smart organization.
           </p>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <FileText className="h-8 w-8 text-blue-600" />
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">{files.length}</p>
+                  <p className="text-sm text-slate-600">PDFs Uploaded</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <BookOpen className="h-8 w-8 text-green-600" />
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">{entries.length}</p>
+                  <p className="text-sm text-slate-600">Definitions Indexed</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <Settings className="h-8 w-8 text-purple-600" />
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">Ready</p>
+                  <p className="text-sm text-slate-600">System Status</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Upload Section */}
-          <Card className="lg:col-span-2 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-slate-800">
                 <Upload className="h-6 w-6 text-blue-600" />
                 Upload PDF Files
               </CardTitle>
-              <CardDescription>
-                Upload your SANS course material PDFs to begin indexing
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors">
-                <Input
-                  type="file"
-                  multiple
-                  accept=".pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="pdf-upload"
-                />
-                <Label htmlFor="pdf-upload" className="cursor-pointer">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="p-4 bg-blue-100 rounded-full">
-                      <Upload className="h-8 w-8 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-medium text-slate-800">
-                        Click to upload PDF files
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        or drag and drop your SANS course materials here
-                      </p>
-                    </div>
-                  </div>
+              <div>
+                <Label htmlFor="pdf-upload" className="text-base font-medium">
+                  Select SANS Course PDFs
                 </Label>
+                <Input
+                  id="pdf-upload"
+                  type="file"
+                  accept=".pdf"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="mt-2"
+                />
+                <p className="text-sm text-slate-500 mt-2">
+                  Upload multiple PDF files from your SANS course materials
+                </p>
               </div>
 
-              {/* Uploaded Files List */}
-              {uploadedFiles.length > 0 && (
+              {files.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="font-medium text-slate-800">Uploaded Files:</h3>
-                  <div className="grid gap-3">
-                    {uploadedFiles.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5 text-red-500" />
-                          <span className="font-medium text-slate-700">{file.name}</span>
-                          <span className="text-sm text-slate-500">
-                            ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                          </span>
-                        </div>
-                        <Button
-                          onClick={() => openPDFViewer(file)}
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <BookOpen className="h-4 w-4 mr-2" />
-                          Open
-                        </Button>
+                  <h4 className="font-medium text-slate-700">Uploaded Files:</h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {files.map((file, index) => (
+                      <div key={index} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                        <FileText className="h-4 w-4 text-slate-500" />
+                        <span className="text-sm text-slate-700 truncate">{file.name}</span>
+                        <span className="text-xs text-slate-500 ml-auto">
+                          {(file.size / 1024 / 1024).toFixed(1)} MB
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              <Button
+                onClick={() => navigate('/pdf-viewer')}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={files.length === 0}
+              >
+                Start Indexing PDFs
+              </Button>
             </CardContent>
           </Card>
 
-          {/* Settings and Actions */}
-          <div className="space-y-6">
-            {/* Watermark Settings */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-slate-800">
-                  <Settings className="h-5 w-5 text-slate-600" />
-                  Watermark Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure watermark filtering for your PDFs
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="watermark-email" className="text-sm font-medium text-slate-700">
-                    Your Email (for watermark filtering)
-                  </Label>
-                  <Input
-                    id="watermark-email"
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={watermarkEmail}
-                    onChange={(e) => setWatermarkEmail(e.target.value)}
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">
-                    This helps filter out watermarks from highlighting
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Settings Section */}
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 text-slate-800">
+                <Settings className="h-6 w-6 text-purple-600" />
+                Watermark Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Label htmlFor="watermark-email">Email (from PDF watermark)</Label>
+                <Input
+                  id="watermark-email"
+                  value={settings?.watermark_email || ''}
+                  onChange={(e) => handleWatermarkUpdate('watermark_email', e.target.value)}
+                  placeholder="user@example.com"
+                  className="mt-1"
+                  disabled={isUpdating}
+                />
+                <p className="text-sm text-slate-500 mt-1">
+                  Enter the email shown in your SANS PDF watermarks
+                </p>
+              </div>
 
-            {/* Quick Actions */}
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-slate-800">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  onClick={() => navigate('/index-manager')}
-                  className="w-full justify-start bg-slate-100 hover:bg-slate-200 text-slate-800"
-                  variant="outline"
-                >
-                  <FileText className="h-4 w-4 mr-3" />
-                  Manage Index
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+              <div>
+                <Label htmlFor="watermark-timestamp">Timestamp Pattern</Label>
+                <Input
+                  id="watermark-timestamp"
+                  value={settings?.watermark_timestamp || ''}
+                  onChange={(e) => handleWatermarkUpdate('watermark_timestamp', e.target.value)}
+                  placeholder="timestamp"
+                  className="mt-1"
+                  disabled={isUpdating}
+                />
+                <p className="text-sm text-slate-500 mt-1">
+                  Enter the timestamp pattern from your SANS PDF watermarks
+                </p>
+              </div>
+
+              {isUpdating && (
+                <div className="flex items-center gap-2 text-blue-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Saving settings...</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-8 text-center">
+          <Button
+            onClick={() => navigate('/index-manager')}
+            variant="outline"
+            size="lg"
+            className="bg-white/80 border-slate-200 hover:bg-white"
+          >
+            <BookOpen className="h-5 w-5 mr-2" />
+            View Index Manager
+          </Button>
         </div>
       </div>
     </div>

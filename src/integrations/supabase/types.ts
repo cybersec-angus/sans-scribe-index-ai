@@ -9,7 +9,102 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      index_entries: {
+        Row: {
+          ai_enrichment: string | null
+          book_number: string
+          color_code: string
+          created_at: string
+          definition: string
+          id: string
+          notes: string | null
+          page_number: number
+          updated_at: string
+          word: string
+        }
+        Insert: {
+          ai_enrichment?: string | null
+          book_number: string
+          color_code?: string
+          created_at?: string
+          definition: string
+          id?: string
+          notes?: string | null
+          page_number: number
+          updated_at?: string
+          word: string
+        }
+        Update: {
+          ai_enrichment?: string | null
+          book_number?: string
+          color_code?: string
+          created_at?: string
+          definition?: string
+          id?: string
+          notes?: string | null
+          page_number?: number
+          updated_at?: string
+          word?: string
+        }
+        Relationships: []
+      }
+      pdf_files: {
+        Row: {
+          book_number: string
+          file_name: string
+          file_size: number | null
+          id: string
+          upload_date: string
+          watermark_email: string | null
+          watermark_timestamp: string | null
+        }
+        Insert: {
+          book_number: string
+          file_name: string
+          file_size?: number | null
+          id?: string
+          upload_date?: string
+          watermark_email?: string | null
+          watermark_timestamp?: string | null
+        }
+        Update: {
+          book_number?: string
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          upload_date?: string
+          watermark_email?: string | null
+          watermark_timestamp?: string | null
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          default_color_code: string | null
+          id: string
+          updated_at: string
+          watermark_email: string | null
+          watermark_timestamp: string | null
+        }
+        Insert: {
+          created_at?: string
+          default_color_code?: string | null
+          id?: string
+          updated_at?: string
+          watermark_email?: string | null
+          watermark_timestamp?: string | null
+        }
+        Update: {
+          created_at?: string
+          default_color_code?: string | null
+          id?: string
+          updated_at?: string
+          watermark_email?: string | null
+          watermark_timestamp?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

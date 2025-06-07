@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,28 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, Edit2, Save, X, FileText, Search } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, Download, Edit2, Save, X, FileText, Search, Loader2 } from "lucide-react";
+import { useIndexEntries } from "@/hooks/useIndexEntries";
+import type { Tables } from "@/integrations/supabase/types";
 
-interface IndexEntry {
-  id: string;
-  word: string;
-  definition: string;
-  pageNumber: number;
-  bookNumber: string;
-  notes?: string;
-  colorCode: string;
-  aiEnrichment?: string;
-}
+type IndexEntry = Tables<'index_entries'>;
 
 const IndexManager = () => {
-  const [entries, setEntries] = useState<IndexEntry[]>([]);
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<IndexEntry>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const navigate = useNavigate();
-  const { toast } = useToast();
+  
+  const { entries, isLoading, updateEntry, deleteEntry, isUpdating, isDeleting } = useIndexEntries();
 
   const colors = [
     { name: "All", value: "", bg: "bg-slate-100" },
@@ -40,18 +31,13 @@ const IndexManager = () => {
     { name: "Orange", value: "#f97316", bg: "bg-orange-200" },
   ];
 
-  useEffect(() => {
-    const storedEntries = JSON.parse(localStorage.getItem('indexEntries') || '[]');
-    setEntries(storedEntries);
-  }, []);
-
   const filteredEntries = entries.filter(entry => {
     const matchesSearch = !searchTerm || 
       entry.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.definition.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.bookNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      entry.book_number.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesColor = !selectedColor || entry.colorCode === selectedColor;
+    const matchesColor = !selectedColor || entry.color_code === selectedColor;
     
     return matchesSearch && matchesColor;
   });
@@ -63,27 +49,16 @@ const IndexManager = () => {
 
   const saveEdit = () => {
     if (!editingEntry || !editForm.word || !editForm.definition) {
-      toast({
-        title: "Missing Information",
-        description: "Word and definition are required.",
-        variant: "destructive",
-      });
       return;
     }
 
-    const updatedEntries = entries.map(entry => 
-      entry.id === editingEntry ? { ...entry, ...editForm } : entry
-    );
+    updateEntry({
+      id: editingEntry,
+      ...editForm,
+    });
     
-    setEntries(updatedEntries);
-    localStorage.setItem('indexEntries', JSON.stringify(updatedEntries));
     setEditingEntry(null);
     setEditForm({});
-    
-    toast({
-      title: "Entry Updated",
-      description: "Definition has been successfully updated.",
-    });
   };
 
   const cancelEdit = () => {
@@ -91,15 +66,8 @@ const IndexManager = () => {
     setEditForm({});
   };
 
-  const deleteEntry = (id: string) => {
-    const updatedEntries = entries.filter(entry => entry.id !== id);
-    setEntries(updatedEntries);
-    localStorage.setItem('indexEntries', JSON.stringify(updatedEntries));
-    
-    toast({
-      title: "Entry Deleted",
-      description: "Definition has been removed from your index.",
-    });
+  const handleDeleteEntry = (id: string) => {
+    deleteEntry(id);
   };
 
   const exportToCSV = () => {
@@ -108,10 +76,10 @@ const IndexManager = () => {
       ...entries.map(entry => [
         entry.word,
         entry.definition,
-        entry.pageNumber.toString(),
-        entry.bookNumber,
+        entry.page_number.toString(),
+        entry.book_number,
         entry.notes || '',
-        entry.aiEnrichment || ''
+        entry.ai_enrichment || ''
       ])
     ].map(row => row.map(field => `"${field}"`).join(',')).join('\n');
 
@@ -122,19 +90,25 @@ const IndexManager = () => {
     a.download = 'sans-index.csv';
     a.click();
     URL.revokeObjectURL(url);
-
-    toast({
-      title: "Export Complete",
-      description: "Your index has been exported to CSV format.",
-    });
   };
 
   const groupedEntries = filteredEntries.reduce((acc, entry) => {
-    const book = entry.bookNumber;
+    const book = entry.book_number;
     if (!acc[book]) acc[book] = [];
     acc[book].push(entry);
     return acc;
   }, {} as Record<string, IndexEntry[]>);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-lg text-slate-600">Loading your index...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -224,7 +198,7 @@ const IndexManager = () => {
                     <div
                       key={entry.id}
                       className="p-4 border border-slate-200 rounded-lg hover:shadow-md transition-shadow"
-                      style={{ borderLeftWidth: '4px', borderLeftColor: entry.colorCode }}
+                      style={{ borderLeftWidth: '4px', borderLeftColor: entry.color_code }}
                     >
                       {editingEntry === entry.id ? (
                         <div className="space-y-4">
@@ -240,8 +214,8 @@ const IndexManager = () => {
                               <Label>Page Number</Label>
                               <Input
                                 type="number"
-                                value={editForm.pageNumber || ''}
-                                onChange={(e) => setEditForm({ ...editForm, pageNumber: parseInt(e.target.value) || 0 })}
+                                value={editForm.page_number || ''}
+                                onChange={(e) => setEditForm({ ...editForm, page_number: parseInt(e.target.value) || 0 })}
                               />
                             </div>
                           </div>
@@ -262,8 +236,17 @@ const IndexManager = () => {
                             />
                           </div>
                           <div className="flex gap-2">
-                            <Button onClick={saveEdit} size="sm" className="bg-green-600 hover:bg-green-700">
-                              <Save className="h-4 w-4 mr-2" />
+                            <Button 
+                              onClick={saveEdit} 
+                              size="sm" 
+                              className="bg-green-600 hover:bg-green-700"
+                              disabled={isUpdating}
+                            >
+                              {isUpdating ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4 mr-2" />
+                              )}
                               Save
                             </Button>
                             <Button onClick={cancelEdit} variant="outline" size="sm">
@@ -277,7 +260,7 @@ const IndexManager = () => {
                             <div className="flex items-center gap-3">
                               <h3 className="text-lg font-semibold text-slate-900">{entry.word}</h3>
                               <Badge variant="outline" className="text-xs">
-                                Page {entry.pageNumber}
+                                Page {entry.page_number}
                               </Badge>
                             </div>
                             <div className="flex gap-2">
@@ -286,16 +269,22 @@ const IndexManager = () => {
                                 size="sm"
                                 variant="outline"
                                 className="h-8 w-8 p-0"
+                                disabled={isUpdating}
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
                               <Button
-                                onClick={() => deleteEntry(entry.id)}
+                                onClick={() => handleDeleteEntry(entry.id)}
                                 size="sm"
                                 variant="outline"
                                 className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                disabled={isDeleting}
                               >
-                                <X className="h-4 w-4" />
+                                {isDeleting ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <X className="h-4 w-4" />
+                                )}
                               </Button>
                             </div>
                           </div>
@@ -306,10 +295,10 @@ const IndexManager = () => {
                               <p className="text-sm text-slate-600 italic">{entry.notes}</p>
                             </div>
                           )}
-                          {entry.aiEnrichment && (
+                          {entry.ai_enrichment && (
                             <div className="bg-blue-50 p-3 rounded-lg">
                               <p className="text-sm font-medium text-blue-800 mb-1">AI Enrichment:</p>
-                              <p className="text-sm text-blue-700">{entry.aiEnrichment}</p>
+                              <p className="text-sm text-blue-700">{entry.ai_enrichment}</p>
                             </div>
                           )}
                         </div>
