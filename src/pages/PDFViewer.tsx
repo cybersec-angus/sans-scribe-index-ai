@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { useIndexEntries } from "@/hooks/useIndexEntries";
 // React PDF Viewer imports
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
-import { highlightPlugin, MessageIcon, RenderHighlightTargetProps, RenderHighlightsProps } from '@react-pdf-viewer/highlight';
+import { highlightPlugin } from '@react-pdf-viewer/highlight';
 import type { HighlightArea, NewHighlight } from '@react-pdf-viewer/highlight';
 
 // Import styles
@@ -74,71 +74,12 @@ const PDFViewer = () => {
 
   // PDF Viewer plugins
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
+  const highlightPluginInstance = highlightPlugin();
 
-  const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
-    <div
-      style={{
-        background: '#eee',
-        display: 'flex',
-        position: 'absolute',
-        left: `${props.selectionRegion.left}%`,
-        top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
-        transform: 'translate(0, 8px)',
-        zIndex: 1,
-      }}
-    >
-      <MessageIcon />
-    </div>
-  );
-
-  const renderHighlights = (props: RenderHighlightsProps) => (
-    <div>
-      {highlights.map((highlight) => (
-        <React.Fragment key={highlight.id}>
-          {highlight.highlightAreas
-            .filter((area) => area.pageIndex === props.pageIndex)
-            .map((area, idx) => (
-              <div
-                key={idx}
-                style={Object.assign(
-                  {},
-                  {
-                    background: highlight.content.color || colorCode,
-                    opacity: 0.4,
-                  },
-                  props.getCssProperties(area, props.rotation)
-                )}
-              />
-            ))}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-
-  const highlightPluginInstance = highlightPlugin({
-    renderHighlightTarget,
-    renderHighlights,
-  });
-
-  const { jumpToHighlightArea } = highlightPluginInstance;
-
-  const handleHighlightText = (highlight: NewHighlight) => {
-    const selectedText = highlight.content.text;
-    
+  const handleHighlightText = (selectedText: string) => {
     if (isWaitingForWord && selectedText) {
       setSelectedWord(selectedText);
       setIsWaitingForWord(false);
-      
-      // Add highlight for the word
-      const newHighlight = {
-        ...highlight,
-        id: `word-${Date.now()}`,
-        content: {
-          ...highlight.content,
-          color: '#3b82f6', // Blue for words
-        }
-      };
-      setHighlights(prev => [...prev, newHighlight]);
       
       toast({
         title: "Word Selected",
@@ -149,17 +90,6 @@ const PDFViewer = () => {
       setIsWaitingForDefinition(false);
       setIsDefining(true);
       setDefinition(selectedText);
-      
-      // Add highlight for the definition
-      const newHighlight = {
-        ...highlight,
-        id: `definition-${Date.now()}`,
-        content: {
-          ...highlight.content,
-          color: '#10b981', // Green for definitions
-        }
-      };
-      setHighlights(prev => [...prev, newHighlight]);
       
       toast({
         title: "Definition Selected",
@@ -329,18 +259,6 @@ const PDFViewer = () => {
                         onPageChange={(e) => {
                           setCurrentPage(e.currentPage + 1); // PDF viewer is 0-indexed
                         }}
-                        onTextSelectionChange={(e) => {
-                          if (e.selectedText && (isWaitingForWord || isWaitingForDefinition)) {
-                            const highlight: NewHighlight = {
-                              id: `temp-${Date.now()}`,
-                              highlightAreas: e.highlightAreas,
-                              content: {
-                                text: e.selectedText,
-                              },
-                            };
-                            handleHighlightText(highlight);
-                          }
-                        }}
                       />
                     </Worker>
                   ) : (
@@ -394,23 +312,8 @@ const PDFViewer = () => {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           const text = (e.target as HTMLInputElement).value.trim();
-                          if (text && isWaitingForWord) {
-                            setSelectedWord(text);
-                            setIsWaitingForWord(false);
-                            toast({
-                              title: "Word Entered",
-                              description: `Word: "${text}" - Press 'D' to select definition`,
-                            });
-                            (e.target as HTMLInputElement).value = '';
-                          } else if (text && isWaitingForDefinition) {
-                            setSelectedDefinition(text);
-                            setIsWaitingForDefinition(false);
-                            setIsDefining(true);
-                            setDefinition(text);
-                            toast({
-                              title: "Definition Entered",
-                              description: `Definition captured. Complete the entry form.`,
-                            });
+                          if (text) {
+                            handleHighlightText(text);
                             (e.target as HTMLInputElement).value = '';
                           }
                         }
