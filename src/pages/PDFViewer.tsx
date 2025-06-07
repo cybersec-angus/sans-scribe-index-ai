@@ -101,7 +101,7 @@ const PDFViewer = () => {
         size="sm"
         onClick={() => {
           const selectedText = props.selectedText;
-          console.log('Selected text:', selectedText);
+          console.log('Raw selected text:', selectedText);
           handleHighlightText(selectedText);
           props.cancel();
         }}
@@ -124,21 +124,39 @@ const PDFViewer = () => {
     renderHighlightTarget,
   });
 
+  // Function to clean up selected text
+  const cleanText = (text: string): string => {
+    return text
+      // Replace multiple whitespace characters (spaces, tabs, newlines) with single spaces
+      .replace(/\s+/g, ' ')
+      // Remove leading and trailing whitespace
+      .trim()
+      // Remove any weird unicode characters that might be causing issues
+      .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
+      // Clean up any remaining multiple spaces
+      .replace(/\s{2,}/g, ' ');
+  };
+
   const handleHighlightText = (selectedText: string) => {
-    console.log('handleHighlightText called with:', selectedText);
-    if (isWaitingForWord && selectedText) {
-      setSelectedWord(selectedText);
+    console.log('handleHighlightText called with raw text:', selectedText);
+    
+    // Clean the selected text
+    const cleanedText = cleanText(selectedText);
+    console.log('Cleaned text:', cleanedText);
+    
+    if (isWaitingForWord && cleanedText) {
+      setSelectedWord(cleanedText);
       setIsWaitingForWord(false);
       
       toast({
         title: "Word Selected",
-        description: `Word: "${selectedText}" - Press 'D' to select definition`,
+        description: `Word: "${cleanedText}" - Press 'D' to select definition`,
       });
-    } else if (isWaitingForDefinition && selectedText) {
-      setSelectedDefinition(selectedText);
+    } else if (isWaitingForDefinition && cleanedText) {
+      setSelectedDefinition(cleanedText);
       setIsWaitingForDefinition(false);
       setIsDefining(true);
-      setDefinition(selectedText);
+      setDefinition(cleanedText);
       
       toast({
         title: "Definition Selected",
