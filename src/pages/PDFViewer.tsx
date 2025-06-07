@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -24,8 +23,8 @@ import '@react-pdf-viewer/highlight/lib/styles/index.css';
 // Configure pdfjs worker
 import * as pdfjs from 'pdfjs-dist';
 
-// Set worker source to use a working CDN with proper CORS headers
-pdfjs.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.min.js';
+// Set worker source to use the correct URL with .mjs extension
+pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@5.3.31/build/pdf.worker.min.mjs';
 
 interface IndexEntry {
   id: string;
@@ -264,7 +263,7 @@ const PDFViewer = () => {
               <CardContent className="p-6 h-full">
                 <div className="h-full">
                   {pdfUrl ? (
-                    <Worker workerUrl="https://unpkg.com/pdfjs-dist/build/pdf.worker.min.js">
+                    <Worker workerUrl="https://unpkg.com/pdfjs-dist@5.3.31/build/pdf.worker.min.mjs">
                       <Viewer
                         fileUrl={pdfUrl}
                         plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
