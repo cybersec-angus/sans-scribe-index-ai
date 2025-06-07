@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -125,13 +124,13 @@ const PDFViewer = () => {
     renderHighlightTarget,
   });
 
-  // Enhanced function to clean up selected text using word reconstruction
+  // Enhanced function to clean up selected text with better word boundary detection
   const cleanText = (text: string): string => {
     let cleaned = text;
     
     console.log('Original text:', JSON.stringify(cleaned));
     
-    // Common words to help with reconstruction
+    // Common words and prefixes to help with reconstruction
     const commonWords = [
       'attacks', 'focused', 'earning', 'money', 'generating', 'revenue', 'malicious', 'group', 'perpetrator', 'perpetrators',
       'some', 'most', 'common', 'attack', 'methods', 'these', 'days', 'ransomware', 'both', 'against', 'organizations',
@@ -141,11 +140,12 @@ const PDFViewer = () => {
       'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see',
       'two', 'way', 'who', 'boy', 'did', 'she', 'use', 'her', 'man', 'new', 'say', 'each', 'make', 'most', 'over',
       'said', 'some', 'time', 'very', 'when', 'come', 'here', 'just', 'like', 'long', 'many', 'over', 'such', 'take',
-      'than', 'them', 'well', 'were'
+      'than', 'them', 'well', 'were', 'what', 'will', 'work', 'year', 'your', 'from', 'they', 'been', 'have', 'their',
+      'there', 'would', 'could', 'should', 'being', 'where', 'while', 'about', 'above', 'below', 'under', 'through'
     ];
     
     // Check if text has the characteristic spacing issue (lots of single chars followed by spaces)
-    const spacedPattern = /(\w\s){8,}/; // At least 8 consecutive single-char-space patterns
+    const spacedPattern = /(\w\s){8,}/;
     
     if (spacedPattern.test(cleaned)) {
       console.log('Detected spaced text pattern, attempting reconstruction...');
@@ -197,11 +197,36 @@ const PDFViewer = () => {
       
       cleaned = result;
     } else {
-      console.log('No extreme spacing detected, applying gentle cleanup...');
-      // For normal text, just clean up excessive whitespace
+      console.log('No extreme spacing detected, applying word boundary fixes...');
+      
+      // For text that's mostly correct but has some missing spaces, use regex to add spaces
+      // Add space before capital letters that follow lowercase letters
+      cleaned = cleaned.replace(/([a-z])([A-Z])/g, '$1 $2');
+      
+      // Add spaces around common word boundaries
       cleaned = cleaned
-        .replace(/\s+/g, ' ') // Multiple spaces become single space
-        .trim(); // Remove leading/trailing spaces
+        .replace(/(\w)(of)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(the)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(and)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(for)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(are)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(with)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(that)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(this)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(some)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(most)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(attack)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(service)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(data)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(be)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(to)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(is)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(as)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(on)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(in)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(we)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(an)(\w)/gi, '$1 $2 $3')
+        .replace(/(\w)(a)(\w)/gi, '$1 $2 $3');
     }
     
     // Final cleanup
