@@ -187,7 +187,7 @@ const applyPostProcessingRules = (text: string): string => {
   let processed = text;
   
   // Fix common word concatenations
-  const concatenationFixes = [
+  const concatenationFixes: [RegExp, string][] = [
     // Common word pairs that get stuck together
     [/\b(data)(is)\b/gi, '$1 $2'],
     [/\b(ransom)(is)\b/gi, '$1 $2'],
@@ -251,7 +251,7 @@ const applyPostProcessingRules = (text: string): string => {
   }
   
   // Fix over-separated words (words that got split incorrectly)
-  const separationFixes = [
+  const separationFixes: [RegExp, string][] = [
     // Common words that get split
     [/\b(se rv ice)\b/gi, 'service'],
     [/\b(ser vice)\b/gi, 'service'],
