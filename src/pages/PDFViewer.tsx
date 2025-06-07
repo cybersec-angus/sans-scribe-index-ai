@@ -155,8 +155,8 @@ const PDFViewer = () => {
   const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
     <div
       style={{
-        background: '#fff',
-        border: '1px solid #ccc',
+        background: 'hsl(var(--background))',
+        border: '1px solid hsl(var(--border))',
         borderRadius: '4px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         display: 'flex',
@@ -447,8 +447,6 @@ const PDFViewer = () => {
     setNotes("");
     setAiEnhancement("");
     setIsDefining(false);
-    setIsWaitingForWord(false);
-    setIsWaitingForDefinition(false);
   };
 
   const performSearch = () => {
@@ -496,7 +494,7 @@ const PDFViewer = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -505,14 +503,14 @@ const PDFViewer = () => {
               onClick={() => navigate('/')}
               variant="outline"
               size="sm"
-              className="bg-white/80"
+              className="bg-card/80"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{pdfName}</h1>
-              <p className="text-sm text-slate-600">
+              <h1 className="text-2xl font-bold text-foreground">{pdfName}</h1>
+              <p className="text-sm text-muted-foreground">
                 Page {currentPage} {pageOffset > 0 && `(Actual: ${Math.max(1, currentPage - pageOffset)})`}
               </p>
             </div>
@@ -521,7 +519,7 @@ const PDFViewer = () => {
             <Button
               onClick={() => setShowFlashcards(true)}
               variant="outline"
-              className="bg-white/80"
+              className="bg-card/80"
               disabled={entries.length === 0}
             >
               <Brain className="h-4 w-4 mr-2" />
@@ -530,7 +528,7 @@ const PDFViewer = () => {
             <Button
               onClick={() => setShowDefinitions(!showDefinitions)}
               variant="outline"
-              className="bg-white/80"
+              className="bg-card/80"
             >
               <List className="h-4 w-4 mr-2" />
               {showDefinitions ? 'Hide' : 'Show'} Definitions
@@ -548,7 +546,7 @@ const PDFViewer = () => {
         <div className={`grid gap-6 ${showDefinitions ? 'grid-cols-1 lg:grid-cols-6' : 'grid-cols-1 lg:grid-cols-4'}`}>
           {/* PDF Viewer Area */}
           <div className={showDefinitions ? 'lg:col-span-3' : 'lg:col-span-3'}>
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm h-[calc(100vh-200px)]">
+            <Card className="shadow-lg border bg-card/80 backdrop-blur-sm h-[calc(100vh-200px)]">
               <CardContent className="p-6 h-full">
                 <div className="h-full">
                   {pdfUrl ? (
@@ -565,7 +563,7 @@ const PDFViewer = () => {
                       />
                     </Worker>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-center text-slate-500">
+                    <div className="h-full flex items-center justify-center text-center text-muted-foreground">
                       <div>
                         <BookOpen className="h-12 w-12 mx-auto mb-4" />
                         <p>Loading PDF...</p>
@@ -582,23 +580,23 @@ const PDFViewer = () => {
           <div className={showDefinitions ? 'lg:col-span-2' : 'lg:col-span-1'}>
             <div className="space-y-6">
               {/* Instructions */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="text-slate-800">Instructions</CardTitle>
+                  <CardTitle className="text-card-foreground">Instructions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-sm text-slate-600">1. Press 'W' to start word selection</p>
-                  <p className="text-sm text-slate-600">2. Select text in the PDF directly</p>
-                  <p className="text-sm text-slate-600">3. Press 'D' to select definition</p>
-                  <p className="text-sm text-slate-600">4. Select definition text in the PDF</p>
-                  <p className="text-sm text-slate-600">5. Complete the form and save</p>
+                  <p className="text-sm text-muted-foreground">1. Press 'W' to start word selection</p>
+                  <p className="text-sm text-muted-foreground">2. Select text in the PDF directly</p>
+                  <p className="text-sm text-muted-foreground">3. Press 'D' to select definition</p>
+                  <p className="text-sm text-muted-foreground">4. Select definition text in the PDF</p>
+                  <p className="text-sm text-muted-foreground">5. Complete the form and save</p>
                 </CardContent>
               </Card>
 
               {/* AI Settings */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <CardTitle className="flex items-center gap-2 text-card-foreground">
                     <Sparkles className="h-5 w-5" />
                     AI Enhancement Settings
                   </CardTitle>
@@ -629,7 +627,7 @@ const PDFViewer = () => {
                       <SelectTrigger id="model-select">
                         <SelectValue placeholder={availableModels.length === 0 ? "Test connection to load models" : "Select a model"} />
                       </SelectTrigger>
-                      <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
+                      <SelectContent className="bg-popover border border-border shadow-lg z-50">
                         {availableModels.map((model) => (
                           <SelectItem key={model.id} value={model.id}>
                             {model.name}
@@ -638,7 +636,7 @@ const PDFViewer = () => {
                       </SelectContent>
                     </Select>
                     {availableModels.length > 0 && (
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {availableModels.length} model(s) available
                       </p>
                     )}
@@ -685,7 +683,7 @@ const PDFViewer = () => {
                         value={debugResponse}
                         readOnly
                         rows={4}
-                        className="bg-slate-50 text-xs font-mono"
+                        className="bg-muted text-xs font-mono"
                       />
                     </div>
                   )}
@@ -693,9 +691,9 @@ const PDFViewer = () => {
               </Card>
 
               {/* Enhanced Search */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <CardTitle className="flex items-center gap-2 text-card-foreground">
                     <Search className="h-5 w-5" />
                     Search PDF
                   </CardTitle>
@@ -732,7 +730,7 @@ const PDFViewer = () => {
                       Clear
                     </Button>
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Use the search box in the PDF toolbar (🔍) to perform the actual search and navigate through results
                   </p>
                 </CardContent>
@@ -740,20 +738,20 @@ const PDFViewer = () => {
 
               {/* Manual Input for PDF text */}
               {(isWaitingForWord || isWaitingForDefinition) && (
-                <Card className="shadow-lg border-0 bg-yellow-50 border-l-4 border-l-yellow-500">
+                <Card className="shadow-lg border bg-yellow-50 dark:bg-yellow-950/20 border-l-4 border-l-yellow-500">
                   <CardHeader>
-                    <CardTitle className="text-sm text-yellow-800">
+                    <CardTitle className="text-sm text-yellow-800 dark:text-yellow-200">
                       {isWaitingForWord ? "Select Word in PDF" : "Select Definition in PDF"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-xs text-yellow-700">
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
                       {isWaitingForWord 
                         ? "Select text in the PDF above to capture the word you want to define" 
                         : "Select text in the PDF above to capture the definition"
                       }
                     </p>
-                    <p className="text-xs text-yellow-600">
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">
                       Or enter manually below as fallback:
                     </p>
                     <Input
@@ -768,46 +766,46 @@ const PDFViewer = () => {
                         }
                       }}
                     />
-                    <p className="text-xs text-yellow-600">Press Enter to confirm manual input</p>
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">Press Enter to confirm manual input</p>
                   </CardContent>
                 </Card>
               )}
 
               {/* Status indicators */}
               {isWaitingForWord && (
-                <Card className="shadow-lg border-0 bg-blue-50 border-l-4 border-l-blue-500">
+                <Card className="shadow-lg border bg-blue-50 dark:bg-blue-950/20 border-l-4 border-l-blue-500">
                   <CardContent className="p-4">
-                    <p className="text-sm font-medium text-blue-800">Waiting for word selection...</p>
-                    <p className="text-xs text-blue-600">Select text in the PDF or use manual input</p>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Waiting for word selection...</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-300">Select text in the PDF or use manual input</p>
                   </CardContent>
                 </Card>
               )}
 
               {selectedWord && !isWaitingForDefinition && !isDefining && (
-                <Card className="shadow-lg border-0 bg-green-50 border-l-4 border-l-green-500">
+                <Card className="shadow-lg border bg-green-50 dark:bg-green-950/20 border-l-4 border-l-green-500">
                   <CardContent className="p-4">
-                    <p className="text-sm text-green-700 mb-2">Selected word:</p>
-                    <p className="font-medium text-green-800 mb-2">"{selectedWord}"</p>
-                    <p className="text-xs text-green-600">Press 'D' to select definition</p>
+                    <p className="text-sm text-green-700 dark:text-green-300 mb-2">Selected word:</p>
+                    <p className="font-medium text-green-800 dark:text-green-200 mb-2">"{selectedWord}"</p>
+                    <p className="text-xs text-green-600 dark:text-green-400">Press 'D' to select definition</p>
                   </CardContent>
                 </Card>
               )}
 
               {isWaitingForDefinition && (
-                <Card className="shadow-lg border-0 bg-orange-50 border-l-4 border-l-orange-500">
+                <Card className="shadow-lg border bg-orange-50 dark:bg-orange-950/20 border-l-4 border-l-orange-500">
                   <CardContent className="p-4">
-                    <p className="text-sm font-medium text-orange-800">Waiting for definition...</p>
-                    <p className="text-xs text-orange-600">Select text in the PDF or use manual input</p>
+                    <p className="text-sm font-medium text-orange-800 dark:text-orange-200">Waiting for definition...</p>
+                    <p className="text-xs text-orange-600 dark:text-orange-300">Select text in the PDF or use manual input</p>
                   </CardContent>
                 </Card>
               )}
 
               {/* Definition Panel */}
               {isDefining && (
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
                   <CardHeader>
-                    <CardTitle className="text-slate-800">Define Term</CardTitle>
-                    <p className="text-sm text-slate-600">Word: "{selectedWord}"</p>
+                    <CardTitle className="text-card-foreground">Define Term</CardTitle>
+                    <p className="text-sm text-muted-foreground">Word: "{selectedWord}"</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
@@ -850,7 +848,7 @@ const PDFViewer = () => {
                             key={color.value}
                             onClick={() => setColorCode(color.value)}
                             className={`p-2 rounded-lg border-2 transition-all ${
-                              colorCode === color.value ? 'border-slate-800' : 'border-slate-200'
+                              colorCode === color.value ? 'border-foreground' : 'border-border'
                             } ${color.bg}`}
                           >
                             <div className="w-full h-4 rounded" style={{ backgroundColor: color.value }} />
@@ -860,7 +858,7 @@ const PDFViewer = () => {
                     </div>
 
                     {/* AI Enhancement Section */}
-                    <div className="border-t pt-4">
+                    <div className="border-t border-border pt-4">
                       <div className="flex items-center justify-between mb-2">
                         <Label>AI Enhancement</Label>
                         <Button
@@ -879,7 +877,7 @@ const PDFViewer = () => {
                           onChange={(e) => setAiEnhancement(e.target.value)}
                           placeholder="AI enhancement will appear here..."
                           rows={4}
-                          className="bg-blue-50"
+                          className="bg-blue-50 dark:bg-blue-950/20"
                         />
                       )}
                     </div>
@@ -905,9 +903,9 @@ const PDFViewer = () => {
               )}
 
               {/* Page Navigation */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="text-slate-800">Page Navigation</CardTitle>
+                  <CardTitle className="text-card-foreground">Page Navigation</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2">
@@ -935,7 +933,7 @@ const PDFViewer = () => {
                     </Button>
                   </div>
                   {pageOffset > 0 && (
-                    <p className="text-xs text-slate-600">
+                    <p className="text-xs text-muted-foreground">
                       Actual page: {Math.max(1, currentPage - pageOffset)} (offset: -{pageOffset})
                     </p>
                   )}
@@ -947,14 +945,14 @@ const PDFViewer = () => {
           {/* Definitions Panel with Edit/Delete buttons */}
           {showDefinitions && (
             <div className="lg:col-span-1">
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm h-[calc(100vh-200px)]">
+              <Card className="shadow-lg border bg-card/80 backdrop-blur-sm h-[calc(100vh-200px)]">
                 <CardHeader>
-                  <CardTitle className="text-slate-800">Definitions</CardTitle>
+                  <CardTitle className="text-card-foreground">Definitions</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 h-full overflow-y-auto">
                   <div className="space-y-4">
                     {entries.length === 0 ? (
-                      <div className="text-center text-slate-500 py-8">
+                      <div className="text-center text-muted-foreground py-8">
                         <BookOpen className="h-8 w-8 mx-auto mb-2" />
                         <p className="text-sm">No definitions yet</p>
                       </div>
@@ -962,18 +960,18 @@ const PDFViewer = () => {
                       entries.map((entry) => (
                         <div
                           key={entry.id}
-                          className="p-3 border rounded-lg bg-white/60 border-l-4"
+                          className="p-3 border border-border rounded-lg bg-card/60 border-l-4"
                           style={{ borderLeftColor: entry.color_code }}
                         >
-                          <h4 className="font-semibold text-slate-800 mb-1">{entry.word}</h4>
-                          <p className="text-sm text-slate-600 mb-2">{entry.definition}</p>
+                          <h4 className="font-semibold text-card-foreground mb-1">{entry.word}</h4>
+                          <p className="text-sm text-muted-foreground mb-2">{entry.definition}</p>
                           {entry.ai_enrichment && (
-                            <div className="bg-blue-50 p-2 rounded mb-2">
-                              <p className="text-xs font-medium text-blue-800 mb-1">AI Enhancement:</p>
-                              <p className="text-xs text-blue-700">{entry.ai_enrichment}</p>
+                            <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded mb-2">
+                              <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-1">AI Enhancement:</p>
+                              <p className="text-xs text-blue-700 dark:text-blue-300">{entry.ai_enrichment}</p>
                             </div>
                           )}
-                          <div className="flex justify-between items-center text-xs text-slate-500 mb-2">
+                          <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
                             <span>Page {entry.page_number}</span>
                             <span>{entry.book_number}</span>
                           </div>
@@ -990,7 +988,7 @@ const PDFViewer = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handleDeleteEntry(entry.id)}
-                              className="text-xs px-2 py-1 h-6 text-red-600 hover:text-red-700"
+                              className="text-xs px-2 py-1 h-6 text-destructive hover:text-destructive-foreground"
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
