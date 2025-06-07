@@ -47,6 +47,14 @@ interface CustomHighlight {
   highlightAreas: HighlightArea[];
 }
 
+interface AIModel {
+  id: string;
+  name: string;
+  object: string;
+  created: number;
+  owned_by: string;
+}
+
 const PDFViewer = () => {
   const [pdfUrl, setPdfUrl] = useState<string>("");
   const [pdfName, setPdfName] = useState<string>("");
@@ -74,7 +82,8 @@ const PDFViewer = () => {
   // AI Enhancement state
   const [openWebUIUrl, setOpenWebUIUrl] = useState("http://localhost:3000");
   const [apiKey, setApiKey] = useState("");
-  const [selectedModel, setSelectedModel] = useState("llama3.2");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
   const [aiEnhancement, setAiEnhancement] = useState("");
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'failed'>('unknown');
@@ -290,6 +299,7 @@ const PDFViewer = () => {
     setIsTestingConnection(true);
     setConnectionStatus('unknown');
     setDebugResponse("");
+    setAvailableModels([]);
     
     try {
       const headers: Record<string, string> = {
@@ -311,11 +321,30 @@ const PDFViewer = () => {
 
       const data = await response.json();
       setDebugResponse(JSON.stringify(data, null, 2));
+      
+      // Extract models from the response
+      if (data.data && Array.isArray(data.data)) {
+        const models = data.data.map((model: AIModel) => ({
+          id: model.id,
+          name: model.name || model.id,
+          object: model.object,
+          created: model.created,
+          owned_by: model.owned_by
+        }));
+        
+        setAvailableModels(models);
+        
+        // Set the first model as selected if none is selected
+        if (models.length > 0 && !selectedModel) {
+          setSelectedModel(models[0].id);
+        }
+      }
+      
       setConnectionStatus('connected');
       
       toast({
         title: "Connection Successful",
-        description: "Successfully connected to OpenWebUI server",
+        description: `Successfully connected to OpenWebUI server. Found ${data.data?.length || 0} models.`,
       });
     } catch (error) {
       console.error('Connection test failed:', error);
@@ -346,6 +375,15 @@ const PDFViewer = () => {
       toast({
         title: "Missing OpenWebUI URL",
         description: "Please provide your OpenWebUI server URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedModel) {
+      toast({
+        title: "No Model Selected",
+        description: "Please test the connection and select a model first.",
         variant: "destructive",
       });
       return;
@@ -587,18 +625,23 @@ const PDFViewer = () => {
                   </div>
                   <div>
                     <Label htmlFor="model-select">AI Model</Label>
-                    <Select value={selectedModel} onValueChange={setSelectedModel}>
+                    <Select value={selectedModel} onValueChange={setSelectedModel} disabled={availableModels.length === 0}>
                       <SelectTrigger id="model-select">
-                        <SelectValue placeholder="Select a model" />
+                        <SelectValue placeholder={availableModels.length === 0 ? "Test connection to load models" : "Select a model"} />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="llama3.2">Llama 3.2</SelectItem>
-                        <SelectItem value="llama3.1">Llama 3.1</SelectItem>
-                        <SelectItem value="mistral">Mistral</SelectItem>
-                        <SelectItem value="codellama">CodeLlama</SelectItem>
-                        <SelectItem value="gemma">Gemma</SelectItem>
+                      <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
+                        {availableModels.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            {model.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+                    {availableModels.length > 0 && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        {availableModels.length} model(s) available
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -824,7 +867,7 @@ const PDFViewer = () => {
                           onClick={handleAIEnhancement}
                           variant="outline"
                           size="sm"
-                          disabled={isEnhancing || !selectedWord || !definition}
+                          disabled={isEnhancing || !selectedWord || !definition || !selectedModel}
                         >
                           <Sparkles className="h-4 w-4 mr-2" />
                           {isEnhancing ? 'Enhancing...' : 'Enhance with AI'}
