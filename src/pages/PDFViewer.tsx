@@ -13,7 +13,7 @@ import { useIndexEntries } from "@/hooks/useIndexEntries";
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { highlightPlugin } from '@react-pdf-viewer/highlight';
-import type { HighlightArea } from '@react-pdf-viewer/highlight';
+import type { HighlightArea, RenderHighlightTargetProps } from '@react-pdf-viewer/highlight';
 
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -82,11 +82,50 @@ const PDFViewer = () => {
     }
   }, [navigate]);
 
-  // PDF Viewer plugins
+  // PDF Viewer plugins with proper highlight handling
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
-  const highlightPluginInstance = highlightPlugin();
+  
+  const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
+    <div
+      style={{
+        background: '#eee',
+        display: 'flex',
+        position: 'absolute',
+        left: `${props.selectionRegion.left}%`,
+        top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
+        transform: 'translate(0, 8px)',
+        zIndex: 1000,
+      }}
+    >
+      <Button
+        size="sm"
+        onClick={() => {
+          const selectedText = props.selectedText;
+          console.log('Selected text:', selectedText);
+          handleHighlightText(selectedText);
+          props.cancel();
+        }}
+        className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1"
+      >
+        Select Text
+      </Button>
+      <Button
+        size="sm"
+        onClick={props.cancel}
+        variant="outline"
+        className="text-xs px-2 py-1 ml-1"
+      >
+        Cancel
+      </Button>
+    </div>
+  );
+
+  const highlightPluginInstance = highlightPlugin({
+    renderHighlightTarget,
+  });
 
   const handleHighlightText = (selectedText: string) => {
+    console.log('handleHighlightText called with:', selectedText);
     if (isWaitingForWord && selectedText) {
       setSelectedWord(selectedText);
       setIsWaitingForWord(false);
@@ -116,7 +155,7 @@ const PDFViewer = () => {
         setIsWaitingForWord(true);
         toast({
           title: "Waiting for Word",
-          description: "Select a word to define in the PDF",
+          description: "Select text in the PDF to define it",
         });
       } else if (event.key.toLowerCase() === 'd' && selectedWord && !isWaitingForDefinition && !isDefining) {
         event.preventDefault();
@@ -295,9 +334,9 @@ const PDFViewer = () => {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-sm text-slate-600">1. Press 'W' to start word selection</p>
-                  <p className="text-sm text-slate-600">2. Enter a word in the input field</p>
+                  <p className="text-sm text-slate-600">2. Select text in the PDF directly</p>
                   <p className="text-sm text-slate-600">3. Press 'D' to select definition</p>
-                  <p className="text-sm text-slate-600">4. Enter definition text in the input field</p>
+                  <p className="text-sm text-slate-600">4. Select definition text in the PDF</p>
                   <p className="text-sm text-slate-600">5. Complete the form and save</p>
                 </CardContent>
               </Card>
@@ -307,15 +346,18 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-yellow-50 border-l-4 border-l-yellow-500">
                   <CardHeader>
                     <CardTitle className="text-sm text-yellow-800">
-                      {isWaitingForWord ? "Enter Word" : "Enter Definition"}
+                      {isWaitingForWord ? "Select Word in PDF" : "Select Definition in PDF"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="text-xs text-yellow-700">
                       {isWaitingForWord 
-                        ? "Enter the word you want to define:" 
-                        : "Enter the definition text:"
+                        ? "Select text in the PDF above to capture the word you want to define" 
+                        : "Select text in the PDF above to capture the definition"
                       }
+                    </p>
+                    <p className="text-xs text-yellow-600">
+                      Or enter manually below as fallback:
                     </p>
                     <Input
                       placeholder={isWaitingForWord ? "Enter the word here..." : "Enter the definition here..."}
@@ -329,7 +371,7 @@ const PDFViewer = () => {
                         }
                       }}
                     />
-                    <p className="text-xs text-yellow-600">Press Enter to confirm</p>
+                    <p className="text-xs text-yellow-600">Press Enter to confirm manual input</p>
                   </CardContent>
                 </Card>
               )}
@@ -367,7 +409,7 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-blue-50 border-l-4 border-l-blue-500">
                   <CardContent className="p-4">
                     <p className="text-sm font-medium text-blue-800">Waiting for word selection...</p>
-                    <p className="text-xs text-blue-600">Enter text in the input field above</p>
+                    <p className="text-xs text-blue-600">Select text in the PDF or use manual input</p>
                   </CardContent>
                 </Card>
               )}
@@ -386,7 +428,7 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-orange-50 border-l-4 border-l-orange-500">
                   <CardContent className="p-4">
                     <p className="text-sm font-medium text-orange-800">Waiting for definition...</p>
-                    <p className="text-xs text-orange-600">Enter text in the input field above</p>
+                    <p className="text-xs text-orange-600">Select text in the PDF or use manual input</p>
                   </CardContent>
                 </Card>
               )}
