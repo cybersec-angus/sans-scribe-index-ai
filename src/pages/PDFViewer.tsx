@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -263,16 +264,18 @@ const PDFViewer = () => {
               <CardContent className="p-6 h-full">
                 <div className="h-full">
                   {pdfUrl ? (
-                    <Viewer
-                      fileUrl={pdfUrl}
-                      plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
-                      onDocumentLoad={(e) => {
-                        console.log('PDF loaded with', e.doc.numPages, 'pages');
-                      }}
-                      onPageChange={(e) => {
-                        setCurrentPage(e.currentPage + 1); // PDF viewer is 0-indexed
-                      }}
-                    />
+                    <Worker workerUrl={`https://unpkg.com/pdfjs-dist@5.3.31/build/pdf.worker.min.js`}>
+                      <Viewer
+                        fileUrl={pdfUrl}
+                        plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
+                        onDocumentLoad={(e) => {
+                          console.log('PDF loaded with', e.doc.numPages, 'pages');
+                        }}
+                        onPageChange={(e) => {
+                          setCurrentPage(e.currentPage + 1); // PDF viewer is 0-indexed
+                        }}
+                      />
+                    </Worker>
                   ) : (
                     <div className="h-full flex items-center justify-center text-center text-slate-500">
                       <div>
