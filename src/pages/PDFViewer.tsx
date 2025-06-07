@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Search, Highlighter, Save, BookOpen, List, Edit, Trash2, Brain } from "lucide-react";
+import { ArrowLeft, Search, Highlighter, Save, BookOpen, List, Edit, Trash2, Brain, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIndexEntries } from "@/hooks/useIndexEntries";
 import { usePDFFiles } from "@/hooks/usePDFFiles";
@@ -70,9 +70,14 @@ const PDFViewer = () => {
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
+  // AI Enhancement state
+  const [openWebUIUrl, setOpenWebUIUrl] = useState("http://localhost:3000");
+  const [apiKey, setApiKey] = useState("");
+  const [aiEnhancement, setAiEnhancement] = useState("");
+
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { entries, createEntry, updateEntry, deleteEntry, isUpdating } = useIndexEntries();
+  const { entries, createEntry, updateEntry, deleteEntry, enhanceWithAI, isUpdating, isEnhancing } = useIndexEntries();
   const { getPDFFile, createPDFUrl } = usePDFFiles();
 
   useEffect(() => {
@@ -275,12 +280,34 @@ const PDFViewer = () => {
     { name: "Orange", value: "#f97316", bg: "bg-orange-200" },
   ];
 
-  const generateAIEnrichment = async (word: string): Promise<string> => {
-    // Simulate AI enrichment - in real implementation, this would call an AI API
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(`AI Context: ${word} is commonly used in cybersecurity contexts. Related concepts include network security, threat analysis, and defensive measures.`);
-      }, 1000);
+  const handleAIEnhancement = async () => {
+    if (!selectedWord || !definition) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a word and provide a definition first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!openWebUIUrl.trim()) {
+      toast({
+        title: "Missing OpenWebUI URL",
+        description: "Please provide your OpenWebUI server URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    enhanceWithAI({
+      word: selectedWord,
+      definition: definition,
+      openWebUIUrl: openWebUIUrl.trim(),
+      apiKey: apiKey.trim() || undefined,
+    }, {
+      onSuccess: (enhancement) => {
+        setAiEnhancement(enhancement);
+      }
     });
   };
 
@@ -294,8 +321,6 @@ const PDFViewer = () => {
       return;
     }
 
-    const aiEnrichment = await generateAIEnrichment(selectedWord);
-
     // Calculate actual page number with offset
     const actualPageNumber = Math.max(1, currentPage - pageOffset);
 
@@ -306,7 +331,7 @@ const PDFViewer = () => {
       book_number: bookNumber || pdfName,
       notes,
       color_code: colorCode,
-      ai_enrichment: aiEnrichment,
+      ai_enrichment: aiEnhancement || undefined,
     };
 
     createEntry(newEntry);
@@ -316,6 +341,7 @@ const PDFViewer = () => {
     setSelectedDefinition("");
     setDefinition("");
     setNotes("");
+    setAiEnhancement("");
     setIsDefining(false);
   };
 
@@ -324,6 +350,7 @@ const PDFViewer = () => {
     setSelectedDefinition("");
     setDefinition("");
     setNotes("");
+    setAiEnhancement("");
     setIsDefining(false);
     setIsWaitingForWord(false);
     setIsWaitingForDefinition(false);
@@ -470,6 +497,37 @@ const PDFViewer = () => {
                   <p className="text-sm text-slate-600">3. Press 'D' to select definition</p>
                   <p className="text-sm text-slate-600">4. Select definition text in the PDF</p>
                   <p className="text-sm text-slate-600">5. Complete the form and save</p>
+                </CardContent>
+              </Card>
+
+              {/* AI Settings */}
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Sparkles className="h-5 w-5" />
+                    AI Enhancement Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="openwebui-url">OpenWebUI Server URL</Label>
+                    <Input
+                      id="openwebui-url"
+                      value={openWebUIUrl}
+                      onChange={(e) => setOpenWebUIUrl(e.target.value)}
+                      placeholder="http://localhost:3000"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="api-key">API Key (Optional)</Label>
+                    <Input
+                      id="api-key"
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Enter API key if required"
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
@@ -640,6 +698,31 @@ const PDFViewer = () => {
                       </div>
                     </div>
 
+                    {/* AI Enhancement Section */}
+                    <div className="border-t pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label>AI Enhancement</Label>
+                        <Button
+                          onClick={handleAIEnhancement}
+                          variant="outline"
+                          size="sm"
+                          disabled={isEnhancing || !selectedWord || !definition}
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          {isEnhancing ? 'Enhancing...' : 'Enhance with AI'}
+                        </Button>
+                      </div>
+                      {aiEnhancement && (
+                        <Textarea
+                          value={aiEnhancement}
+                          onChange={(e) => setAiEnhancement(e.target.value)}
+                          placeholder="AI enhancement will appear here..."
+                          rows={4}
+                          className="bg-blue-50"
+                        />
+                      )}
+                    </div>
+
                     <div className="flex gap-2">
                       <Button
                         onClick={saveDefinition}
@@ -723,6 +806,12 @@ const PDFViewer = () => {
                         >
                           <h4 className="font-semibold text-slate-800 mb-1">{entry.word}</h4>
                           <p className="text-sm text-slate-600 mb-2">{entry.definition}</p>
+                          {entry.ai_enrichment && (
+                            <div className="bg-blue-50 p-2 rounded mb-2">
+                              <p className="text-xs font-medium text-blue-800 mb-1">AI Enhancement:</p>
+                              <p className="text-xs text-blue-700">{entry.ai_enrichment}</p>
+                            </div>
+                          )}
                           <div className="flex justify-between items-center text-xs text-slate-500 mb-2">
                             <span>Page {entry.page_number}</span>
                             <span>{entry.book_number}</span>

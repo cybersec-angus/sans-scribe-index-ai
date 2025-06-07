@@ -113,14 +113,86 @@ export const useIndexEntries = () => {
     },
   });
 
+  const enhanceWithAI = useMutation({
+    mutationFn: async ({ word, definition, openWebUIUrl, apiKey }: { 
+      word: string; 
+      definition: string; 
+      openWebUIUrl: string;
+      apiKey?: string;
+    }) => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+
+      const response = await fetch(`${openWebUIUrl}/api/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: 'llama3.2',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert cybersecurity educator. Provide detailed, educational enhancements to cybersecurity terms and definitions. Focus on practical applications, real-world examples, and related concepts that would help students understand the topic better.'
+            },
+            {
+              role: 'user',
+              content: `Enhance this cybersecurity definition with additional context, examples, and related concepts:
+
+Term: ${word}
+Definition: ${definition}
+
+Please provide:
+1. Additional context and background
+2. Real-world examples or use cases
+3. Related terms and concepts
+4. Current industry relevance
+5. Best practices or mitigation strategies (if applicable)
+
+Keep the response educational and concise but comprehensive.`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenWebUI API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || 'No enhancement available';
+    },
+    onSuccess: (enhancement, variables) => {
+      toast({
+        title: "AI Enhancement Complete",
+        description: `Enhanced definition for "${variables.word}" is ready to save.`,
+      });
+    },
+    onError: (error) => {
+      console.error('Error enhancing with AI:', error);
+      toast({
+        title: "AI Enhancement Failed",
+        description: "Failed to enhance definition with AI. Please check your OpenWebUI settings.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     entries,
     isLoading,
     createEntry: createEntry.mutate,
     updateEntry: updateEntry.mutate,
     deleteEntry: deleteEntry.mutate,
+    enhanceWithAI: enhanceWithAI.mutate,
     isCreating: createEntry.isPending,
     isUpdating: updateEntry.isPending,
     isDeleting: deleteEntry.isPending,
+    isEnhancing: enhanceWithAI.isPending,
   };
 };
