@@ -44,10 +44,14 @@ const PDFViewer = () => {
     const storedPdfUrl = sessionStorage.getItem('currentPDF');
     const storedPdfName = sessionStorage.getItem('currentPDFName');
     
+    console.log('Stored PDF URL:', storedPdfUrl);
+    console.log('Stored PDF Name:', storedPdfName);
+    
     if (storedPdfUrl && storedPdfName) {
       setPdfUrl(storedPdfUrl);
       setPdfName(storedPdfName);
     } else {
+      console.log('No PDF data found in session storage, redirecting to home');
       navigate('/');
     }
   }, [navigate]);
@@ -92,41 +96,6 @@ const PDFViewer = () => {
         console.log('Selection from parent document:', selectedText);
       }
 
-      // If no selection in parent document, try to get from iframe
-      if (!selectedText) {
-        const iframe = document.querySelector('iframe') as HTMLIFrameElement;
-        if (iframe) {
-          try {
-            // Try to access iframe content if possible
-            if (iframe.contentDocument) {
-              const iframeSelection = iframe.contentDocument.getSelection();
-              if (iframeSelection && iframeSelection.toString().trim()) {
-                selectedText = iframeSelection.toString().trim();
-                console.log('Selection from iframe:', selectedText);
-              }
-            } else if (iframe.contentWindow) {
-              // Alternative approach for cross-origin iframes
-              const iframeSelection = iframe.contentWindow.getSelection();
-              if (iframeSelection && iframeSelection.toString().trim()) {
-                selectedText = iframeSelection.toString().trim();
-                console.log('Selection from iframe window:', selectedText);
-              }
-            }
-          } catch (error) {
-            console.log('Cannot access iframe content due to cross-origin restrictions');
-            // For cross-origin iframes, we'll need to use a different approach
-            // We can prompt the user to copy-paste the text
-            if (isWaitingForWord || isWaitingForDefinition) {
-              toast({
-                title: "Manual Selection Required",
-                description: "Please copy the text and paste it in the input field below",
-                variant: "destructive",
-              });
-            }
-          }
-        }
-      }
-
       console.log('Final selected text:', selectedText);
 
       if (selectedText.length > 0) {
@@ -153,50 +122,12 @@ const PDFViewer = () => {
     };
 
     // Add event listeners for text selection
-    const addEventListeners = () => {
-      document.addEventListener('mouseup', handleTextSelection);
-      document.addEventListener('selectionchange', handleTextSelection);
-      
-      // Try to add listeners to iframe
-      const iframe = document.querySelector('iframe') as HTMLIFrameElement;
-      if (iframe) {
-        const addIframeListeners = () => {
-          try {
-            if (iframe.contentDocument) {
-              iframe.contentDocument.addEventListener('mouseup', handleTextSelection);
-              iframe.contentDocument.addEventListener('selectionchange', handleTextSelection);
-              console.log('Added event listeners to iframe document');
-            }
-          } catch (error) {
-            console.log('Cannot add event listeners to iframe due to cross-origin restrictions');
-          }
-        };
-        
-        if (iframe.contentDocument) {
-          addIframeListeners();
-        } else {
-          iframe.addEventListener('load', addIframeListeners);
-        }
-      }
-    };
-
-    addEventListeners();
+    document.addEventListener('mouseup', handleTextSelection);
+    document.addEventListener('selectionchange', handleTextSelection);
 
     return () => {
       document.removeEventListener('mouseup', handleTextSelection);
       document.removeEventListener('selectionchange', handleTextSelection);
-      
-      const iframe = document.querySelector('iframe') as HTMLIFrameElement;
-      if (iframe) {
-        try {
-          if (iframe.contentDocument) {
-            iframe.contentDocument.removeEventListener('mouseup', handleTextSelection);
-            iframe.contentDocument.removeEventListener('selectionchange', handleTextSelection);
-          }
-        } catch (error) {
-          // Ignore errors when removing listeners
-        }
-      }
     };
   }, [isWaitingForWord, isWaitingForDefinition, toast]);
 
@@ -325,14 +256,16 @@ const PDFViewer = () => {
                   {pdfUrl ? (
                     <iframe
                       src={pdfUrl}
-                      className="w-full h-full rounded-lg"
+                      className="w-full h-full rounded-lg border"
                       title="PDF Viewer"
-                      sandbox="allow-same-origin allow-scripts"
+                      onLoad={() => console.log('PDF iframe loaded')}
+                      onError={() => console.log('PDF iframe error')}
                     />
                   ) : (
                     <div className="text-center text-slate-500">
                       <BookOpen className="h-12 w-12 mx-auto mb-4" />
-                      <p>No PDF loaded</p>
+                      <p>Loading PDF...</p>
+                      <p className="text-xs mt-2">If this persists, try uploading the PDF again</p>
                     </div>
                   )}
                 </div>
@@ -350,49 +283,53 @@ const PDFViewer = () => {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-sm text-slate-600">1. Press 'W' to start word selection</p>
-                  <p className="text-sm text-slate-600">2. Select a word in the PDF</p>
+                  <p className="text-sm text-slate-600">2. Select a word in the text</p>
                   <p className="text-sm text-slate-600">3. Press 'D' to select definition</p>
-                  <p className="text-sm text-slate-600">4. Select definition text in PDF</p>
+                  <p className="text-sm text-slate-600">4. Select definition text</p>
                   <p className="text-sm text-slate-600">5. Complete the form and save</p>
-                  <p className="text-xs text-slate-500 mt-2">Note: If selection doesn't work, you can manually enter text in the form below</p>
                 </CardContent>
               </Card>
 
-              {/* Manual Input Fallback */}
+              {/* Manual Input for PDF text */}
               {(isWaitingForWord || isWaitingForDefinition) && (
                 <Card className="shadow-lg border-0 bg-yellow-50 border-l-4 border-l-yellow-500">
                   <CardHeader>
                     <CardTitle className="text-sm text-yellow-800">
-                      {isWaitingForWord ? "Manual Word Entry" : "Manual Definition Entry"}
+                      {isWaitingForWord ? "Enter Word" : "Enter Definition"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="text-xs text-yellow-700">
-                      If text selection isn't working, you can manually enter the text:
+                      Copy text from the PDF and paste it here:
                     </p>
                     <Input
-                      placeholder={isWaitingForWord ? "Enter the word..." : "Enter the definition..."}
-                      onChange={(e) => {
-                        const text = e.target.value.trim();
-                        if (text && isWaitingForWord) {
-                          setSelectedWord(text);
-                          setIsWaitingForWord(false);
-                          toast({
-                            title: "Word Entered",
-                            description: `Word: "${text}" - Press 'D' to select definition`,
-                          });
-                        } else if (text && isWaitingForDefinition) {
-                          setSelectedDefinition(text);
-                          setIsWaitingForDefinition(false);
-                          setIsDefining(true);
-                          setDefinition(text);
-                          toast({
-                            title: "Definition Entered",
-                            description: `Definition captured. Complete the entry form.`,
-                          });
+                      placeholder={isWaitingForWord ? "Paste the word here..." : "Paste the definition here..."}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const text = (e.target as HTMLInputElement).value.trim();
+                          if (text && isWaitingForWord) {
+                            setSelectedWord(text);
+                            setIsWaitingForWord(false);
+                            toast({
+                              title: "Word Entered",
+                              description: `Word: "${text}" - Press 'D' to select definition`,
+                            });
+                            (e.target as HTMLInputElement).value = '';
+                          } else if (text && isWaitingForDefinition) {
+                            setSelectedDefinition(text);
+                            setIsWaitingForDefinition(false);
+                            setIsDefining(true);
+                            setDefinition(text);
+                            toast({
+                              title: "Definition Entered",
+                              description: `Definition captured. Complete the entry form.`,
+                            });
+                            (e.target as HTMLInputElement).value = '';
+                          }
                         }
                       }}
                     />
+                    <p className="text-xs text-yellow-600">Press Enter to confirm</p>
                   </CardContent>
                 </Card>
               )}
@@ -430,7 +367,7 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-blue-50 border-l-4 border-l-blue-500">
                   <CardContent className="p-4">
                     <p className="text-sm font-medium text-blue-800">Waiting for word selection...</p>
-                    <p className="text-xs text-blue-600">Select a word in the PDF or use manual input above</p>
+                    <p className="text-xs text-blue-600">Select text or use the input field above</p>
                   </CardContent>
                 </Card>
               )}
@@ -449,7 +386,7 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-orange-50 border-l-4 border-l-orange-500">
                   <CardContent className="p-4">
                     <p className="text-sm font-medium text-orange-800">Waiting for definition...</p>
-                    <p className="text-xs text-orange-600">Select the definition text in the PDF or use manual input above</p>
+                    <p className="text-xs text-orange-600">Select text or use the input field above</p>
                   </CardContent>
                 </Card>
               )}
