@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -258,7 +259,7 @@ const PDFViewer = () => {
               <CardContent className="p-6 h-full">
                 <div className="h-full">
                   {pdfUrl ? (
-                    <Worker workerUrl="/pdf.worker.min.js">
+                    <Worker workerUrl="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js">
                       <Viewer
                         fileUrl={pdfUrl}
                         plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
