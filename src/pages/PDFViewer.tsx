@@ -129,15 +129,25 @@ const PDFViewer = () => {
     let cleaned = text;
     
     // First, check if we have the character-separated issue (spaces between every character)
-    // This pattern matches when most characters are followed by spaces
-    const spacedCharPattern = /^(.(\s+)){5,}/;
-    if (spacedCharPattern.test(cleaned)) {
+    // Look for pattern where single characters are followed by one or more spaces
+    const spacedCharPattern = /(\w)\s+(\w)/g;
+    
+    // Count how many single character + space patterns we have vs total characters
+    const matches = [...cleaned.matchAll(spacedCharPattern)];
+    const totalNonSpaceChars = cleaned.replace(/\s/g, '').length;
+    
+    // If more than 70% of characters are in spaced pattern, it's likely the spacing issue
+    if (matches.length > totalNonSpaceChars * 0.3) {
       console.log('Detected spaced character pattern, fixing...');
-      // Remove spaces between single characters, but preserve word boundaries
-      cleaned = cleaned.replace(/(\S)\s+(?=\S)/g, '$1');
+      // More careful approach: only remove single spaces between single characters
+      // but preserve multiple spaces and spaces around punctuation
+      cleaned = cleaned.replace(/(\w)\s(\w)/g, '$1$2');
+      // Also handle spaces around punctuation more carefully
+      cleaned = cleaned.replace(/(\w)\s+([.,;:!?])/g, '$1$2');
+      cleaned = cleaned.replace(/([.,;:!?])\s+(\w)/g, '$1 $2');
     }
     
-    // Standard cleanup
+    // Standard cleanup for any remaining issues
     cleaned = cleaned
       // Replace multiple whitespace characters (spaces, tabs, newlines) with single spaces
       .replace(/\s+/g, ' ')
