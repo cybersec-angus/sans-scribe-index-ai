@@ -5,27 +5,47 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, FileText, Settings, BookOpen, Loader2 } from "lucide-react";
+import { Upload, FileText, Settings, BookOpen, Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useIndexEntries } from "@/hooks/useIndexEntries";
+import { usePDFFiles } from "@/hooks/usePDFFiles";
 
 const Index = () => {
-  const [files, setFiles] = useState<File[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const { settings, updateSettings, isUpdating } = useUserSettings();
   const { entries } = useIndexEntries();
+  const { pdfFiles, uploadPDFFile, deletePDFFile, isUploading } = usePDFFiles();
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files || []);
-    setFiles(prev => [...prev, ...selectedFiles]);
+    console.log('Files selected for upload:', selectedFiles.length);
     
-    toast({
-      title: "Files Uploaded",
-      description: `${selectedFiles.length} PDF file(s) uploaded successfully.`,
-    });
+    if (selectedFiles.length === 0) return;
+
+    // Process each file
+    for (const file of selectedFiles) {
+      if (file.type !== 'application/pdf') {
+        toast({
+          title: "Invalid File Type",
+          description: `${file.name} is not a PDF file. Only PDF files are supported.`,
+          variant: "destructive",
+        });
+        continue;
+      }
+      
+      console.log('Uploading PDF file:', file.name);
+      uploadPDFFile(file);
+    }
+
+    // Clear the input
+    event.target.value = '';
+  };
+
+  const handleRemovePDF = (pdfId: string) => {
+    deletePDFFile(pdfId);
   };
 
   const handleWatermarkUpdate = (field: 'watermark_email' | 'watermark_timestamp', value: string) => {
@@ -57,7 +77,7 @@ const Index = () => {
               <div className="flex items-center gap-3">
                 <FileText className="h-8 w-8 text-blue-600" />
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{files.length}</p>
+                  <p className="text-2xl font-bold text-slate-900">{pdfFiles.length}</p>
                   <p className="text-sm text-slate-600">PDFs Uploaded</p>
                 </div>
               </div>
@@ -110,23 +130,39 @@ const Index = () => {
                   multiple
                   onChange={handleFileUpload}
                   className="mt-2"
+                  disabled={isUploading}
                 />
                 <p className="text-sm text-slate-500 mt-2">
                   Upload multiple PDF files from your SANS course materials
                 </p>
               </div>
 
-              {files.length > 0 && (
+              {isUploading && (
+                <div className="flex items-center gap-2 text-blue-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Uploading PDF files...</span>
+                </div>
+              )}
+
+              {pdfFiles.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-medium text-slate-700">Uploaded Files:</h4>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {files.map((file, index) => (
-                      <div key={index} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                    {pdfFiles.map((file) => (
+                      <div key={file.id} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
                         <FileText className="h-4 w-4 text-slate-500" />
-                        <span className="text-sm text-slate-700 truncate">{file.name}</span>
-                        <span className="text-xs text-slate-500 ml-auto">
-                          {(file.size / 1024 / 1024).toFixed(1)} MB
+                        <span className="text-sm text-slate-700 truncate flex-1">{file.file_name}</span>
+                        <span className="text-xs text-slate-500">
+                          {file.file_size ? (file.file_size / 1024 / 1024).toFixed(1) + ' MB' : 'Unknown size'}
                         </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemovePDF(file.id)}
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-red-500"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -136,7 +172,7 @@ const Index = () => {
               <Button
                 onClick={() => navigate('/pdf-viewer')}
                 className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={files.length === 0}
+                disabled={pdfFiles.length === 0}
               >
                 Start Indexing PDFs
               </Button>
