@@ -1,19 +1,21 @@
-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings, BookOpen, Loader2, FileText } from "lucide-react";
+import { Settings, BookOpen, Loader2, FileText, Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useIndexEntries } from "@/hooks/useIndexEntries";
 import { usePDFFiles } from "@/hooks/usePDFFiles";
 import { PDFUploadForm } from "@/components/PDFUploadForm";
+import { FlashcardViewer } from "@/components/FlashcardViewer";
+import { useState } from "react";
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showFlashcards, setShowFlashcards] = useState(false);
   
   const { settings, updateSettings, isUpdating } = useUserSettings();
   const { entries } = useIndexEntries();
@@ -227,6 +229,15 @@ const Index = () => {
           >
             Start Indexing First PDF
           </Button>
+
+          <Button
+            onClick={() => setShowFlashcards(true)}
+            className="mr-4 bg-purple-600 hover:bg-purple-700"
+            disabled={entries.length === 0}
+          >
+            <Brain className="h-5 w-5 mr-2" />
+            Study Flashcards
+          </Button>
           
           <Button
             onClick={() => navigate('/index-manager')}
@@ -239,6 +250,14 @@ const Index = () => {
           </Button>
         </div>
       </div>
+
+      {/* Flashcard Viewer */}
+      {showFlashcards && (
+        <FlashcardViewer
+          entries={entries}
+          onClose={() => setShowFlashcards(false)}
+        />
+      )}
     </div>
   );
 };

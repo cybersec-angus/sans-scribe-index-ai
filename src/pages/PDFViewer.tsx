@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Search, Highlighter, Save, BookOpen, List } from "lucide-react";
+import { ArrowLeft, Search, Highlighter, Save, BookOpen, List, Edit, Trash2, Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIndexEntries } from "@/hooks/useIndexEntries";
 import { usePDFFiles } from "@/hooks/usePDFFiles";
 import { cleanSelectedText } from "@/utils/textProcessor";
+import { FlashcardViewer } from "@/components/FlashcardViewer";
+import { EditEntryDialog } from "@/components/EditEntryDialog";
 
 // React PDF Viewer imports
 import { Worker, Viewer } from '@react-pdf-viewer/core';
@@ -21,8 +23,6 @@ import type { HighlightArea, RenderHighlightTargetProps } from '@react-pdf-viewe
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import '@react-pdf-viewer/highlight/lib/styles/index.css';
-
-// Note: Using CDN version that matches our installed pdfjs-dist@3.4.120
 
 interface IndexEntry {
   id: string;
@@ -62,9 +62,15 @@ const PDFViewer = () => {
   const [colorCode, setColorCode] = useState("#fbbf24");
   const [showDefinitions, setShowDefinitions] = useState(false);
   const [highlights, setHighlights] = useState<CustomHighlight[]>([]);
+  
+  // New state for editing and flashcards
+  const [showFlashcards, setShowFlashcards] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<any>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { entries, createEntry } = useIndexEntries();
+  const { entries, createEntry, updateEntry, deleteEntry, isUpdating } = useIndexEntries();
   const { getPDFFile, createPDFUrl } = usePDFFiles();
 
   useEffect(() => {
@@ -294,6 +300,24 @@ const PDFViewer = () => {
     });
   };
 
+  // New functions for editing
+  const handleEditEntry = (entry: any) => {
+    setEditingEntry(entry);
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateEntry = (id: string, updates: any) => {
+    updateEntry({ id, updates });
+    setShowEditDialog(false);
+    setEditingEntry(null);
+  };
+
+  const handleDeleteEntry = (id: string) => {
+    if (confirm('Are you sure you want to delete this definition?')) {
+      deleteEntry(id);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="container mx-auto px-6 py-6">
@@ -317,6 +341,15 @@ const PDFViewer = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button
+              onClick={() => setShowFlashcards(true)}
+              variant="outline"
+              className="bg-white/80"
+              disabled={entries.length === 0}
+            >
+              <Brain className="h-4 w-4 mr-2" />
+              Flashcards
+            </Button>
             <Button
               onClick={() => setShowDefinitions(!showDefinitions)}
               variant="outline"
@@ -594,7 +627,7 @@ const PDFViewer = () => {
             </div>
           </div>
 
-          {/* Definitions Panel */}
+          {/* Definitions Panel with Edit/Delete buttons */}
           {showDefinitions && (
             <div className="lg:col-span-1">
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm h-[calc(100vh-200px)]">
@@ -617,9 +650,27 @@ const PDFViewer = () => {
                         >
                           <h4 className="font-semibold text-slate-800 mb-1">{entry.word}</h4>
                           <p className="text-sm text-slate-600 mb-2">{entry.definition}</p>
-                          <div className="flex justify-between items-center text-xs text-slate-500">
+                          <div className="flex justify-between items-center text-xs text-slate-500 mb-2">
                             <span>Page {entry.page_number}</span>
                             <span>{entry.book_number}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditEntry(entry)}
+                              className="text-xs px-2 py-1 h-6"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteEntry(entry.id)}
+                              className="text-xs px-2 py-1 h-6 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
                         </div>
                       ))
@@ -631,6 +682,26 @@ const PDFViewer = () => {
           )}
         </div>
       </div>
+
+      {/* Flashcard Viewer */}
+      {showFlashcards && (
+        <FlashcardViewer
+          entries={entries}
+          onClose={() => setShowFlashcards(false)}
+        />
+      )}
+
+      {/* Edit Dialog */}
+      <EditEntryDialog
+        entry={editingEntry}
+        isOpen={showEditDialog}
+        onClose={() => {
+          setShowEditDialog(false);
+          setEditingEntry(null);
+        }}
+        onSave={handleUpdateEntry}
+        isUpdating={isUpdating}
+      />
     </div>
   );
 };

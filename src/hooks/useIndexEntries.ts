@@ -13,7 +13,7 @@ export const useIndexEntries = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: entries = [], isLoading, error } = useQuery({
+  const { data: entries = [], isLoading } = useQuery({
     queryKey: ['index_entries'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -22,7 +22,7 @@ export const useIndexEntries = () => {
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Error fetching entries:', error);
+        console.error('Error fetching index entries:', error);
         throw error;
       }
       
@@ -41,28 +41,28 @@ export const useIndexEntries = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['index_entries'] });
       toast({
-        title: "Entry Added",
-        description: "Definition has been successfully added to your index.",
+        title: "Definition Added",
+        description: `"${data.word}" has been successfully indexed.`,
       });
     },
     onError: (error) => {
       console.error('Error creating entry:', error);
       toast({
         title: "Error",
-        description: "Failed to add entry to index.",
+        description: "Failed to save definition. Please try again.",
         variant: "destructive",
       });
     },
   });
 
   const updateEntry = useMutation({
-    mutationFn: async ({ id, ...updates }: IndexEntryUpdate & { id: string }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: IndexEntryUpdate }) => {
       const { data, error } = await supabase
         .from('index_entries')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(updates)
         .eq('id', id)
         .select()
         .single();
@@ -70,18 +70,18 @@ export const useIndexEntries = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['index_entries'] });
       toast({
-        title: "Entry Updated",
-        description: "Definition has been successfully updated.",
+        title: "Definition Updated",
+        description: `"${data.word}" has been successfully updated.`,
       });
     },
     onError: (error) => {
       console.error('Error updating entry:', error);
       toast({
         title: "Error",
-        description: "Failed to update entry.",
+        description: "Failed to update definition. Please try again.",
         variant: "destructive",
       });
     },
@@ -99,15 +99,15 @@ export const useIndexEntries = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['index_entries'] });
       toast({
-        title: "Entry Deleted",
-        description: "Definition has been removed from your index.",
+        title: "Definition Deleted",
+        description: "The definition has been removed.",
       });
     },
     onError: (error) => {
       console.error('Error deleting entry:', error);
       toast({
         title: "Error",
-        description: "Failed to delete entry.",
+        description: "Failed to delete definition. Please try again.",
         variant: "destructive",
       });
     },
@@ -116,7 +116,6 @@ export const useIndexEntries = () => {
   return {
     entries,
     isLoading,
-    error,
     createEntry: createEntry.mutate,
     updateEntry: updateEntry.mutate,
     deleteEntry: deleteEntry.mutate,
