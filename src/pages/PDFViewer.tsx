@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -303,21 +302,19 @@ const PDFViewer = () => {
       return;
     }
 
-    // Use the search plugin to search for the term
-    searchPluginInstance.setKeyword(searchTerm);
-    
+    // The search plugin automatically handles keyword highlighting through the UI
+    // We just need to update the search term and let the user know
     toast({
       title: "Search Initiated",
-      description: `Searching for "${searchTerm}" in the PDF. Use the search controls in the toolbar to navigate results.`,
+      description: `Use the search box in the PDF toolbar (🔍) to perform the actual search and navigate through results`,
     });
   };
 
   const clearSearch = () => {
     setSearchTerm("");
-    searchPluginInstance.clearKeyword();
     toast({
       title: "Search Cleared",
-      description: "Search results have been cleared.",
+      description: "Search term cleared. Use the PDF toolbar to clear any active searches.",
     });
   };
 
@@ -439,12 +436,12 @@ const PDFViewer = () => {
                 </CardContent>
               </Card>
 
-              {/* Enhanced Search and Highlight */}
+              {/* Enhanced Search */}
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-800">
                     <Search className="h-5 w-5" />
-                    Search & Highlight
+                    Search PDF
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -480,7 +477,7 @@ const PDFViewer = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-slate-500">
-                    Use the search controls in the PDF toolbar to navigate through results
+                    Use the search box in the PDF toolbar (🔍) to perform the actual search and navigate through results
                   </p>
                 </CardContent>
               </Card>
