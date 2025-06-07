@@ -17,7 +17,7 @@ const Index = () => {
   
   const { settings, updateSettings, isUpdating } = useUserSettings();
   const { entries } = useIndexEntries();
-  const { pdfFiles, uploadPDFFile, deletePDFFile, isUploading } = usePDFFiles();
+  const { pdfFiles, uploadPDFFile, deletePDFFile, isUploading, getPDFFile, createPDFUrl } = usePDFFiles();
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files || []);
@@ -46,6 +46,38 @@ const Index = () => {
 
   const handleRemovePDF = (pdfId: string) => {
     deletePDFFile(pdfId);
+  };
+
+  const handleStartIndexing = () => {
+    if (pdfFiles.length === 0) {
+      toast({
+        title: "No PDFs Available",
+        description: "Please upload at least one PDF file before starting indexing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the first PDF file for now (you could enhance this to let users select which PDF)
+    const firstPDF = pdfFiles[0];
+    const file = getPDFFile(firstPDF.id);
+    
+    if (!file) {
+      toast({
+        title: "PDF File Not Found",
+        description: "The PDF file is no longer available. Please re-upload the file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create a URL for the PDF and store it for the PDF viewer
+    const pdfUrl = createPDFUrl(file);
+    sessionStorage.setItem('currentPDF', pdfUrl);
+    sessionStorage.setItem('currentPDFName', firstPDF.file_name);
+    sessionStorage.setItem('currentPDFId', firstPDF.id);
+    
+    navigate('/pdf-viewer');
   };
 
   const handleWatermarkUpdate = (field: 'watermark_email' | 'watermark_timestamp', value: string) => {
@@ -170,7 +202,7 @@ const Index = () => {
               )}
 
               <Button
-                onClick={() => navigate('/pdf-viewer')}
+                onClick={handleStartIndexing}
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={pdfFiles.length === 0}
               >

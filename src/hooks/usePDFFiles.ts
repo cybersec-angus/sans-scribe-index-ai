@@ -5,12 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 
-type PDFFile = Tables<'pdf_files'>;
+type PDFFile = Tables<'pdf_files'> & { file_url?: string };
 type PDFFileInsert = TablesInsert<'pdf_files'>;
 
 export const usePDFFiles = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [uploadedFiles, setUploadedFiles] = useState<Map<string, File>>(new Map());
 
   const { data: pdfFiles = [], isLoading } = useQuery({
     queryKey: ['pdf_files'],
@@ -53,6 +54,9 @@ export const usePDFFiles = () => {
         throw error;
       }
       
+      // Store the actual file for later use
+      setUploadedFiles(prev => new Map(prev.set(data.id, file)));
+      
       console.log('PDF file saved to database:', data);
       return data;
     },
@@ -81,6 +85,13 @@ export const usePDFFiles = () => {
         .eq('id', id);
       
       if (error) throw error;
+      
+      // Remove from local storage
+      setUploadedFiles(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(id);
+        return newMap;
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pdf_files'] });
@@ -99,6 +110,14 @@ export const usePDFFiles = () => {
     },
   });
 
+  const getPDFFile = (id: string): File | undefined => {
+    return uploadedFiles.get(id);
+  };
+
+  const createPDFUrl = (file: File): string => {
+    return URL.createObjectURL(file);
+  };
+
   return {
     pdfFiles,
     isLoading,
@@ -106,5 +125,7 @@ export const usePDFFiles = () => {
     deletePDFFile: deletePDFFile.mutate,
     isUploading: uploadPDFFile.isPending,
     isDeleting: deletePDFFile.isPending,
+    getPDFFile,
+    createPDFUrl,
   };
 };
