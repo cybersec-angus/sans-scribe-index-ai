@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -52,9 +53,11 @@ const IndexManager = () => {
       return;
     }
 
+    // Fix: properly structure the updateEntry call with id and updates
+    const { id, ...updates } = editForm;
     updateEntry({
       id: editingEntry,
-      ...editForm,
+      updates
     });
     
     setEditingEntry(null);

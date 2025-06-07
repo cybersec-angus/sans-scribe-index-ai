@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,12 +18,14 @@ import { EditEntryDialog } from "@/components/EditEntryDialog";
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { highlightPlugin } from '@react-pdf-viewer/highlight';
+import { searchPlugin } from '@react-pdf-viewer/search';
 import type { HighlightArea, RenderHighlightTargetProps } from '@react-pdf-viewer/highlight';
 
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import '@react-pdf-viewer/highlight/lib/styles/index.css';
+import '@react-pdf-viewer/search/lib/styles/index.css';
 
 interface IndexEntry {
   id: string;
@@ -126,19 +129,25 @@ const PDFViewer = () => {
     loadPDF();
   }, [navigate, getPDFFile, createPDFUrl]);
 
-  // PDF Viewer plugins with proper highlight handling
+  // PDF Viewer plugins with proper highlight and search handling
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
+  const searchPluginInstance = searchPlugin();
   
   const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
     <div
       style={{
-        background: '#eee',
+        background: '#fff',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         display: 'flex',
         position: 'absolute',
         left: `${props.selectionRegion.left}%`,
         top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
         transform: 'translate(0, 8px)',
         zIndex: 1000,
+        padding: '4px',
+        gap: '4px'
       }}
     >
       <Button
@@ -149,7 +158,7 @@ const PDFViewer = () => {
           handleHighlightText(selectedText);
           props.cancel();
         }}
-        className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1"
+        className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 h-7"
       >
         Select Text
       </Button>
@@ -157,7 +166,7 @@ const PDFViewer = () => {
         size="sm"
         onClick={props.cancel}
         variant="outline"
-        className="text-xs px-2 py-1 ml-1"
+        className="text-xs px-2 py-1 h-7"
       >
         Cancel
       </Button>
@@ -284,19 +293,31 @@ const PDFViewer = () => {
     setIsWaitingForDefinition(false);
   };
 
-  const highlightSearchTerm = () => {
-    if (!searchTerm) {
+  const performSearch = () => {
+    if (!searchTerm.trim()) {
       toast({
         title: "No Search Term",
-        description: "Please enter a word to highlight.",
+        description: "Please enter a word to search for.",
         variant: "destructive",
       });
       return;
     }
 
+    // Use the search plugin to search for the term
+    searchPluginInstance.setKeyword(searchTerm);
+    
     toast({
-      title: "Search Feature",
-      description: `Use the search feature in the PDF viewer toolbar to find "${searchTerm}"`,
+      title: "Search Initiated",
+      description: `Searching for "${searchTerm}" in the PDF. Use the search controls in the toolbar to navigate results.`,
+    });
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+    searchPluginInstance.clearKeyword();
+    toast({
+      title: "Search Cleared",
+      description: "Search results have been cleared.",
     });
   };
 
@@ -378,7 +399,7 @@ const PDFViewer = () => {
                     <Worker workerUrl="/pdf.worker.min.js">
                       <Viewer
                         fileUrl={pdfUrl}
-                        plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
+                        plugins={[defaultLayoutPluginInstance, highlightPluginInstance, searchPluginInstance]}
                         onDocumentLoad={(e) => {
                           console.log('PDF loaded with', e.doc.numPages, 'pages');
                         }}
@@ -418,6 +439,52 @@ const PDFViewer = () => {
                 </CardContent>
               </Card>
 
+              {/* Enhanced Search and Highlight */}
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Search className="h-5 w-5" />
+                    Search & Highlight
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="search-term">Search Term</Label>
+                    <Input
+                      id="search-term"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Enter word to find..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          performSearch();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={performSearch}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                      disabled={!searchTerm.trim()}
+                    >
+                      <Search className="h-4 w-4 mr-2" />
+                      Search
+                    </Button>
+                    <Button
+                      onClick={clearSearch}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Use the search controls in the PDF toolbar to navigate through results
+                  </p>
+                </CardContent>
+              </Card>
+
               {/* Manual Input for PDF text */}
               {(isWaitingForWord || isWaitingForDefinition) && (
                 <Card className="shadow-lg border-0 bg-yellow-50 border-l-4 border-l-yellow-500">
@@ -452,34 +519,6 @@ const PDFViewer = () => {
                   </CardContent>
                 </Card>
               )}
-
-              {/* Search and Highlight */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <Search className="h-5 w-5" />
-                    Search & Highlight
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="search-term">Search Term</Label>
-                    <Input
-                      id="search-term"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Enter word to find..."
-                    />
-                  </div>
-                  <Button
-                    onClick={highlightSearchTerm}
-                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-yellow-900"
-                  >
-                    <Highlighter className="h-4 w-4 mr-2" />
-                    Use PDF Search
-                  </Button>
-                </CardContent>
-              </Card>
 
               {/* Status indicators */}
               {isWaitingForWord && (
