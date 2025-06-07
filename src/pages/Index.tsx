@@ -1,9 +1,10 @@
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings, BookOpen, Loader2 } from "lucide-react";
+import { Settings, BookOpen, Loader2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useIndexEntries } from "@/hooks/useIndexEntries";
