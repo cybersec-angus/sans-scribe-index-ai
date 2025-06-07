@@ -10,6 +10,17 @@ import { ArrowLeft, Search, Highlighter, Save, BookOpen, List } from "lucide-rea
 import { useToast } from "@/hooks/use-toast";
 import { useIndexEntries } from "@/hooks/useIndexEntries";
 
+// React PDF Viewer imports
+import { Worker, Viewer } from '@react-pdf-viewer/core';
+import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
+import { highlightPlugin, MessageIcon, RenderHighlightTargetProps, RenderHighlightsProps } from '@react-pdf-viewer/highlight';
+import type { HighlightArea, NewHighlight } from '@react-pdf-viewer/highlight';
+
+// Import styles
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import '@react-pdf-viewer/default-layout/lib/styles/index.css';
+import '@react-pdf-viewer/highlight/lib/styles/index.css';
+
 interface IndexEntry {
   id: string;
   word: string;
@@ -28,6 +39,7 @@ const PDFViewer = () => {
   const [selectedDefinition, setSelectedDefinition] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageOffset, setPageOffset] = useState(0);
   const [isWaitingForWord, setIsWaitingForWord] = useState(false);
   const [isWaitingForDefinition, setIsWaitingForDefinition] = useState(false);
   const [isDefining, setIsDefining] = useState(false);
@@ -36,6 +48,7 @@ const PDFViewer = () => {
   const [bookNumber, setBookNumber] = useState("");
   const [colorCode, setColorCode] = useState("#fbbf24");
   const [showDefinitions, setShowDefinitions] = useState(false);
+  const [highlights, setHighlights] = useState<NewHighlight[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { entries, createEntry } = useIndexEntries();
@@ -43,18 +56,117 @@ const PDFViewer = () => {
   useEffect(() => {
     const storedPdfUrl = sessionStorage.getItem('currentPDF');
     const storedPdfName = sessionStorage.getItem('currentPDFName');
+    const storedPageOffset = sessionStorage.getItem('currentPDFPageOffset');
     
     console.log('Stored PDF URL:', storedPdfUrl);
     console.log('Stored PDF Name:', storedPdfName);
+    console.log('Stored Page Offset:', storedPageOffset);
     
     if (storedPdfUrl && storedPdfName) {
       setPdfUrl(storedPdfUrl);
       setPdfName(storedPdfName);
+      setPageOffset(parseInt(storedPageOffset || '0'));
     } else {
       console.log('No PDF data found in session storage, redirecting to home');
       navigate('/');
     }
   }, [navigate]);
+
+  // PDF Viewer plugins
+  const defaultLayoutPluginInstance = defaultLayoutPlugin();
+
+  const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
+    <div
+      style={{
+        background: '#eee',
+        display: 'flex',
+        position: 'absolute',
+        left: `${props.selectionRegion.left}%`,
+        top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
+        transform: 'translate(0, 8px)',
+        zIndex: 1,
+      }}
+    >
+      <MessageIcon />
+    </div>
+  );
+
+  const renderHighlights = (props: RenderHighlightsProps) => (
+    <div>
+      {highlights.map((highlight) => (
+        <React.Fragment key={highlight.id}>
+          {highlight.highlightAreas
+            .filter((area) => area.pageIndex === props.pageIndex)
+            .map((area, idx) => (
+              <div
+                key={idx}
+                style={Object.assign(
+                  {},
+                  {
+                    background: highlight.content.color || colorCode,
+                    opacity: 0.4,
+                  },
+                  props.getCssProperties(area, props.rotation)
+                )}
+              />
+            ))}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+
+  const highlightPluginInstance = highlightPlugin({
+    renderHighlightTarget,
+    renderHighlights,
+  });
+
+  const { jumpToHighlightArea } = highlightPluginInstance;
+
+  const handleHighlightText = (highlight: NewHighlight) => {
+    const selectedText = highlight.content.text;
+    
+    if (isWaitingForWord && selectedText) {
+      setSelectedWord(selectedText);
+      setIsWaitingForWord(false);
+      
+      // Add highlight for the word
+      const newHighlight = {
+        ...highlight,
+        id: `word-${Date.now()}`,
+        content: {
+          ...highlight.content,
+          color: '#3b82f6', // Blue for words
+        }
+      };
+      setHighlights(prev => [...prev, newHighlight]);
+      
+      toast({
+        title: "Word Selected",
+        description: `Word: "${selectedText}" - Press 'D' to select definition`,
+      });
+    } else if (isWaitingForDefinition && selectedText) {
+      setSelectedDefinition(selectedText);
+      setIsWaitingForDefinition(false);
+      setIsDefining(true);
+      setDefinition(selectedText);
+      
+      // Add highlight for the definition
+      const newHighlight = {
+        ...highlight,
+        id: `definition-${Date.now()}`,
+        content: {
+          ...highlight.content,
+          color: '#10b981', // Green for definitions
+        }
+      };
+      setHighlights(prev => [...prev, newHighlight]);
+      
+      toast({
+        title: "Definition Selected",
+        description: `Definition captured. Complete the entry form.`,
+      });
+    }
+  };
 
   // Add keyboard event listeners for 'W' and 'D' keys
   useEffect(() => {
@@ -64,14 +176,14 @@ const PDFViewer = () => {
         setIsWaitingForWord(true);
         toast({
           title: "Waiting for Word",
-          description: "Select a word to define",
+          description: "Select a word to define in the PDF",
         });
       } else if (event.key.toLowerCase() === 'd' && selectedWord && !isWaitingForDefinition && !isDefining) {
         event.preventDefault();
         setIsWaitingForDefinition(true);
         toast({
           title: "Waiting for Definition",
-          description: "Select the definition text",
+          description: "Select the definition text in the PDF",
         });
       }
     };
@@ -79,57 +191,6 @@ const PDFViewer = () => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isWaitingForWord, isWaitingForDefinition, isDefining, selectedWord, toast]);
-
-  // Handle text selection from both iframe and parent document
-  useEffect(() => {
-    const handleTextSelection = () => {
-      console.log('handleTextSelection called');
-      console.log('isWaitingForWord:', isWaitingForWord);
-      console.log('isWaitingForDefinition:', isWaitingForDefinition);
-
-      let selectedText = "";
-
-      // Try to get selection from parent document first
-      const parentSelection = window.getSelection();
-      if (parentSelection && parentSelection.toString().trim()) {
-        selectedText = parentSelection.toString().trim();
-        console.log('Selection from parent document:', selectedText);
-      }
-
-      console.log('Final selected text:', selectedText);
-
-      if (selectedText.length > 0) {
-        if (isWaitingForWord) {
-          console.log('Setting selected word:', selectedText);
-          setSelectedWord(selectedText);
-          setIsWaitingForWord(false);
-          toast({
-            title: "Word Selected",
-            description: `Word: "${selectedText}" - Press 'D' to select definition`,
-          });
-        } else if (isWaitingForDefinition) {
-          console.log('Setting selected definition:', selectedText);
-          setSelectedDefinition(selectedText);
-          setIsWaitingForDefinition(false);
-          setIsDefining(true);
-          setDefinition(selectedText);
-          toast({
-            title: "Definition Selected",
-            description: `Definition captured. Complete the entry form.`,
-          });
-        }
-      }
-    };
-
-    // Add event listeners for text selection
-    document.addEventListener('mouseup', handleTextSelection);
-    document.addEventListener('selectionchange', handleTextSelection);
-
-    return () => {
-      document.removeEventListener('mouseup', handleTextSelection);
-      document.removeEventListener('selectionchange', handleTextSelection);
-    };
-  }, [isWaitingForWord, isWaitingForDefinition, toast]);
 
   const colors = [
     { name: "Yellow", value: "#fbbf24", bg: "bg-yellow-200" },
@@ -161,10 +222,13 @@ const PDFViewer = () => {
 
     const aiEnrichment = await generateAIEnrichment(selectedWord);
 
+    // Calculate actual page number with offset
+    const actualPageNumber = Math.max(1, currentPage - pageOffset);
+
     const newEntry = {
       word: selectedWord,
       definition,
-      page_number: currentPage,
+      page_number: actualPageNumber,
       book_number: bookNumber || pdfName,
       notes,
       color_code: colorCode,
@@ -191,7 +255,7 @@ const PDFViewer = () => {
     setIsWaitingForDefinition(false);
   };
 
-  const highlightText = () => {
+  const highlightSearchTerm = () => {
     if (!searchTerm) {
       toast({
         title: "No Search Term",
@@ -201,10 +265,9 @@ const PDFViewer = () => {
       return;
     }
 
-    // Simulate highlighting - in real implementation, this would interact with PDF.js
     toast({
-      title: "Text Highlighted",
-      description: `Highlighted all instances of "${searchTerm}"`,
+      title: "Search Feature",
+      description: `Use the search feature in the PDF viewer toolbar to find "${searchTerm}"`,
     });
   };
 
@@ -225,7 +288,9 @@ const PDFViewer = () => {
             </Button>
             <div>
               <h1 className="text-2xl font-bold text-slate-900">{pdfName}</h1>
-              <p className="text-sm text-slate-600">Page {currentPage}</p>
+              <p className="text-sm text-slate-600">
+                Page {currentPage} {pageOffset > 0 && `(Actual: ${Math.max(1, currentPage - pageOffset)})`}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -252,20 +317,39 @@ const PDFViewer = () => {
           <div className={showDefinitions ? 'lg:col-span-3' : 'lg:col-span-3'}>
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm h-[calc(100vh-200px)]">
               <CardContent className="p-6 h-full">
-                <div className="h-full bg-slate-100 rounded-lg flex items-center justify-center">
+                <div className="h-full">
                   {pdfUrl ? (
-                    <iframe
-                      src={pdfUrl}
-                      className="w-full h-full rounded-lg border"
-                      title="PDF Viewer"
-                      onLoad={() => console.log('PDF iframe loaded')}
-                      onError={() => console.log('PDF iframe error')}
-                    />
+                    <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+                      <Viewer
+                        fileUrl={pdfUrl}
+                        plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
+                        onDocumentLoad={(e) => {
+                          console.log('PDF loaded with', e.doc.numPages, 'pages');
+                        }}
+                        onPageChange={(e) => {
+                          setCurrentPage(e.currentPage + 1); // PDF viewer is 0-indexed
+                        }}
+                        onTextSelectionChange={(e) => {
+                          if (e.selectedText && (isWaitingForWord || isWaitingForDefinition)) {
+                            const highlight: NewHighlight = {
+                              id: `temp-${Date.now()}`,
+                              highlightAreas: e.highlightAreas,
+                              content: {
+                                text: e.selectedText,
+                              },
+                            };
+                            handleHighlightText(highlight);
+                          }
+                        }}
+                      />
+                    </Worker>
                   ) : (
-                    <div className="text-center text-slate-500">
-                      <BookOpen className="h-12 w-12 mx-auto mb-4" />
-                      <p>Loading PDF...</p>
-                      <p className="text-xs mt-2">If this persists, try uploading the PDF again</p>
+                    <div className="h-full flex items-center justify-center text-center text-slate-500">
+                      <div>
+                        <BookOpen className="h-12 w-12 mx-auto mb-4" />
+                        <p>Loading PDF...</p>
+                        <p className="text-xs mt-2">If this persists, try uploading the PDF again</p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -283,9 +367,9 @@ const PDFViewer = () => {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-sm text-slate-600">1. Press 'W' to start word selection</p>
-                  <p className="text-sm text-slate-600">2. Select a word in the text</p>
+                  <p className="text-sm text-slate-600">2. Select a word in the PDF</p>
                   <p className="text-sm text-slate-600">3. Press 'D' to select definition</p>
-                  <p className="text-sm text-slate-600">4. Select definition text</p>
+                  <p className="text-sm text-slate-600">4. Select definition text in the PDF</p>
                   <p className="text-sm text-slate-600">5. Complete the form and save</p>
                 </CardContent>
               </Card>
@@ -295,15 +379,18 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-yellow-50 border-l-4 border-l-yellow-500">
                   <CardHeader>
                     <CardTitle className="text-sm text-yellow-800">
-                      {isWaitingForWord ? "Enter Word" : "Enter Definition"}
+                      {isWaitingForWord ? "Select Word in PDF" : "Select Definition in PDF"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="text-xs text-yellow-700">
-                      Copy text from the PDF and paste it here:
+                      {isWaitingForWord 
+                        ? "Select text in the PDF viewer above or enter manually:" 
+                        : "Select definition text in the PDF viewer above or enter manually:"
+                      }
                     </p>
                     <Input
-                      placeholder={isWaitingForWord ? "Paste the word here..." : "Paste the definition here..."}
+                      placeholder={isWaitingForWord ? "Enter the word here..." : "Enter the definition here..."}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           const text = (e.target as HTMLInputElement).value.trim();
@@ -353,11 +440,11 @@ const PDFViewer = () => {
                     />
                   </div>
                   <Button
-                    onClick={highlightText}
+                    onClick={highlightSearchTerm}
                     className="w-full bg-yellow-500 hover:bg-yellow-600 text-yellow-900"
                   >
                     <Highlighter className="h-4 w-4 mr-2" />
-                    Highlight All
+                    Use PDF Search
                   </Button>
                 </CardContent>
               </Card>
@@ -367,7 +454,7 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-blue-50 border-l-4 border-l-blue-500">
                   <CardContent className="p-4">
                     <p className="text-sm font-medium text-blue-800">Waiting for word selection...</p>
-                    <p className="text-xs text-blue-600">Select text or use the input field above</p>
+                    <p className="text-xs text-blue-600">Select text in the PDF or use the input field above</p>
                   </CardContent>
                 </Card>
               )}
@@ -386,7 +473,7 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-orange-50 border-l-4 border-l-orange-500">
                   <CardContent className="p-4">
                     <p className="text-sm font-medium text-orange-800">Waiting for definition...</p>
-                    <p className="text-xs text-orange-600">Select text or use the input field above</p>
+                    <p className="text-xs text-orange-600">Select text in the PDF or use the input field above</p>
                   </CardContent>
                 </Card>
               )}
@@ -498,6 +585,11 @@ const PDFViewer = () => {
                       Next
                     </Button>
                   </div>
+                  {pageOffset > 0 && (
+                    <p className="text-xs text-slate-600">
+                      Actual page: {Math.max(1, currentPage - pageOffset)} (offset: -{pageOffset})
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
