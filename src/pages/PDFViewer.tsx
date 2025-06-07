@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Search, Highlighter, Save, BookOpen, List } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIndexEntries } from "@/hooks/useIndexEntries";
+import { usePDFFiles } from "@/hooks/usePDFFiles";
 import { cleanSelectedText } from "@/utils/textProcessor";
 
 // React PDF Viewer imports
@@ -46,6 +47,7 @@ interface CustomHighlight {
 const PDFViewer = () => {
   const [pdfUrl, setPdfUrl] = useState<string>("");
   const [pdfName, setPdfName] = useState<string>("");
+  const [pdfId, setPdfId] = useState<string>("");
   const [selectedWord, setSelectedWord] = useState("");
   const [selectedDefinition, setSelectedDefinition] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,25 +65,60 @@ const PDFViewer = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { entries, createEntry } = useIndexEntries();
+  const { getPDFFile, createPDFUrl } = usePDFFiles();
 
   useEffect(() => {
-    const storedPdfUrl = sessionStorage.getItem('currentPDF');
-    const storedPdfName = sessionStorage.getItem('currentPDFName');
-    const storedPageOffset = sessionStorage.getItem('currentPDFPageOffset');
-    
-    console.log('Stored PDF URL:', storedPdfUrl);
-    console.log('Stored PDF Name:', storedPdfName);
-    console.log('Stored Page Offset:', storedPageOffset);
-    
-    if (storedPdfUrl && storedPdfName) {
-      setPdfUrl(storedPdfUrl);
-      setPdfName(storedPdfName);
-      setPageOffset(parseInt(storedPageOffset || '0'));
-    } else {
-      console.log('No PDF data found in session storage, redirecting to home');
-      navigate('/');
-    }
-  }, [navigate]);
+    const loadPDF = () => {
+      // First try to get from session storage (for immediate navigation)
+      let storedPdfUrl = sessionStorage.getItem('currentPDF');
+      let storedPdfName = sessionStorage.getItem('currentPDFName');
+      let storedPdfId = sessionStorage.getItem('currentPDFId');
+      let storedPageOffset = sessionStorage.getItem('currentPDFPageOffset');
+      
+      // If not in session storage, try to restore from the first available PDF
+      if (!storedPdfUrl || !storedPdfId) {
+        // Try to get PDF ID from URL params or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlPdfId = urlParams.get('pdfId');
+        
+        if (urlPdfId) {
+          storedPdfId = urlPdfId;
+        }
+      }
+      
+      if (storedPdfId) {
+        const file = getPDFFile(storedPdfId);
+        if (file) {
+          const url = createPDFUrl(file);
+          setPdfUrl(url);
+          setPdfName(storedPdfName || file.name);
+          setPdfId(storedPdfId);
+          setPageOffset(parseInt(storedPageOffset || '0'));
+          
+          // Update session storage with current values
+          sessionStorage.setItem('currentPDF', url);
+          sessionStorage.setItem('currentPDFName', file.name);
+          sessionStorage.setItem('currentPDFId', storedPdfId);
+          
+          console.log('PDF loaded from persistent storage:', file.name);
+          return;
+        }
+      }
+      
+      if (storedPdfUrl && storedPdfName && storedPdfId) {
+        setPdfUrl(storedPdfUrl);
+        setPdfName(storedPdfName);
+        setPdfId(storedPdfId);
+        setPageOffset(parseInt(storedPageOffset || '0'));
+        console.log('PDF loaded from session storage:', storedPdfName);
+      } else {
+        console.log('No PDF data found, redirecting to home');
+        navigate('/');
+      }
+    };
+
+    loadPDF();
+  }, [navigate, getPDFFile, createPDFUrl]);
 
   // PDF Viewer plugins with proper highlight handling
   const defaultLayoutPluginInstance = defaultLayoutPlugin();

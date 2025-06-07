@@ -23,7 +23,7 @@ const Index = () => {
     deletePDFFile(pdfId);
   };
 
-  const handleStartIndexing = () => {
+  const handleStartIndexing = (selectedPdfId?: string) => {
     if (pdfFiles.length === 0) {
       toast({
         title: "No PDFs Available",
@@ -33,9 +33,21 @@ const Index = () => {
       return;
     }
 
-    // Get the first PDF file for now (you could enhance this to let users select which PDF)
-    const firstPDF = pdfFiles[0];
-    const file = getPDFFile(firstPDF.id);
+    // Use the selected PDF or the first one
+    const targetPDF = selectedPdfId 
+      ? pdfFiles.find(pdf => pdf.id === selectedPdfId) 
+      : pdfFiles[0];
+    
+    if (!targetPDF) {
+      toast({
+        title: "PDF Not Found",
+        description: "The selected PDF file was not found.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const file = getPDFFile(targetPDF.id);
     
     if (!file) {
       toast({
@@ -49,11 +61,12 @@ const Index = () => {
     // Create a URL for the PDF and store it for the PDF viewer
     const pdfUrl = createPDFUrl(file);
     sessionStorage.setItem('currentPDF', pdfUrl);
-    sessionStorage.setItem('currentPDFName', firstPDF.file_name);
-    sessionStorage.setItem('currentPDFId', firstPDF.id);
-    sessionStorage.setItem('currentPDFPageOffset', String(firstPDF.page_offset || 0));
+    sessionStorage.setItem('currentPDFName', targetPDF.file_name);
+    sessionStorage.setItem('currentPDFId', targetPDF.id);
+    sessionStorage.setItem('currentPDFPageOffset', String(targetPDF.page_offset || 0));
     
-    navigate('/pdf-viewer');
+    // Navigate with PDF ID in URL for better persistence
+    navigate(`/pdf-viewer?pdfId=${targetPDF.id}`);
   };
 
   const handleWatermarkUpdate = (field: 'watermark_email' | 'watermark_timestamp', value: string) => {
@@ -118,13 +131,43 @@ const Index = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Upload Section */}
-          <PDFUploadForm
-            onUpload={uploadPDFFile}
-            isUploading={isUploading}
-            uploadedFiles={pdfFiles}
-            onRemove={handleRemovePDF}
-          />
+          {/* Upload Section with PDF Selection */}
+          <div className="space-y-6">
+            <PDFUploadForm
+              onUpload={uploadPDFFile}
+              isUploading={isUploading}
+              uploadedFiles={pdfFiles}
+              onRemove={handleRemovePDF}
+            />
+            
+            {/* PDF List with Individual Actions */}
+            {pdfFiles.length > 0 && (
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-slate-800">Available PDFs</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {pdfFiles.map((pdf) => (
+                    <div key={pdf.id} className="flex items-center justify-between p-3 bg-white/60 rounded-lg border">
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-800">{pdf.file_name}</p>
+                        <p className="text-sm text-slate-600">
+                          {pdf.course_code} • Book {pdf.book_number} • Offset: {pdf.page_offset}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => handleStartIndexing(pdf.id)}
+                        size="sm"
+                        className="ml-3 bg-blue-600 hover:bg-blue-700"
+                      >
+                        Open
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
           {/* Settings Section */}
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -178,11 +221,11 @@ const Index = () => {
         {/* Quick Actions */}
         <div className="mt-8 text-center">
           <Button
-            onClick={handleStartIndexing}
+            onClick={() => handleStartIndexing()}
             className="mr-4 bg-blue-600 hover:bg-blue-700"
             disabled={pdfFiles.length === 0}
           >
-            Start Indexing PDFs
+            Start Indexing First PDF
           </Button>
           
           <Button
