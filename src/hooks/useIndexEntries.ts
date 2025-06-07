@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -137,23 +136,16 @@ export const useIndexEntries = () => {
           messages: [
             {
               role: 'system',
-              content: 'You are an expert cybersecurity educator. Provide detailed, educational enhancements to cybersecurity terms and definitions. Focus on practical applications, real-world examples, and related concepts that would help students understand the topic better.'
+              content: 'You are a cybersecurity educator. Enhance cybersecurity definitions with additional context in a single, concise paragraph. Do not use formatting, bullet points, or numbered lists. Provide a flowing narrative that includes practical applications, real-world examples, related concepts, and current industry relevance.'
             },
             {
               role: 'user',
-              content: `Enhance this cybersecurity definition with additional context, examples, and related concepts:
+              content: `Enhance this cybersecurity term and definition with additional context:
 
 Term: ${word}
 Definition: ${definition}
 
-Please provide:
-1. Additional context and background
-2. Real-world examples or use cases
-3. Related terms and concepts
-4. Current industry relevance
-5. Best practices or mitigation strategies (if applicable)
-
-Keep the response educational and concise but comprehensive.`
+Provide a concise enhancement in one paragraph without formatting that includes practical applications, real-world examples, related concepts, and current industry relevance.`
             }
           ],
           temperature: 0.7,
