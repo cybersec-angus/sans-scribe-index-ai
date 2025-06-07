@@ -76,6 +76,79 @@ const PDFViewer = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isWaitingForWord, isWaitingForDefinition, isDefining, selectedWord, toast]);
 
+  // Handle text selection from both iframe and parent document
+  useEffect(() => {
+    const handleTextSelection = () => {
+      console.log('handleTextSelection called');
+      console.log('isWaitingForWord:', isWaitingForWord);
+      console.log('isWaitingForDefinition:', isWaitingForDefinition);
+
+      // Try to get selection from parent document first
+      let selection = window.getSelection();
+      let selectedText = selection?.toString().trim() || "";
+
+      // If no selection in parent document, try to get from iframe
+      if (!selectedText) {
+        const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+        if (iframe && iframe.contentDocument) {
+          const iframeSelection = iframe.contentDocument.getSelection();
+          selectedText = iframeSelection?.toString().trim() || "";
+          console.log('Selection from iframe:', selectedText);
+        }
+      }
+
+      console.log('Selected text:', selectedText);
+
+      if (selectedText.length > 0) {
+        if (isWaitingForWord) {
+          console.log('Setting selected word:', selectedText);
+          setSelectedWord(selectedText);
+          setIsWaitingForWord(false);
+          toast({
+            title: "Word Selected",
+            description: `Word: "${selectedText}" - Press 'D' to select definition`,
+          });
+        } else if (isWaitingForDefinition) {
+          console.log('Setting selected definition:', selectedText);
+          setSelectedDefinition(selectedText);
+          setIsWaitingForDefinition(false);
+          setIsDefining(true);
+          setDefinition(selectedText);
+          toast({
+            title: "Definition Selected",
+            description: `Definition captured. Complete the entry form.`,
+          });
+        }
+      }
+    };
+
+    // Add mouseup listener to both document and iframe
+    document.addEventListener('mouseup', handleTextSelection);
+    
+    // Also add listener to iframe when it loads
+    const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+    if (iframe) {
+      const addIframeListener = () => {
+        if (iframe.contentDocument) {
+          iframe.contentDocument.addEventListener('mouseup', handleTextSelection);
+        }
+      };
+      
+      if (iframe.contentDocument) {
+        addIframeListener();
+      } else {
+        iframe.addEventListener('load', addIframeListener);
+      }
+    }
+
+    return () => {
+      document.removeEventListener('mouseup', handleTextSelection);
+      if (iframe && iframe.contentDocument) {
+        iframe.contentDocument.removeEventListener('mouseup', handleTextSelection);
+      }
+    };
+  }, [isWaitingForWord, isWaitingForDefinition, toast]);
+
   const colors = [
     { name: "Yellow", value: "#fbbf24", bg: "bg-yellow-200" },
     { name: "Blue", value: "#3b82f6", bg: "bg-blue-200" },
@@ -84,31 +157,6 @@ const PDFViewer = () => {
     { name: "Red", value: "#ef4444", bg: "bg-red-200" },
     { name: "Orange", value: "#f97316", bg: "bg-orange-200" },
   ];
-
-  const handleTextSelection = () => {
-    const selection = window.getSelection();
-    if (selection && selection.toString().length > 0) {
-      const selectedText = selection.toString().trim();
-      
-      if (isWaitingForWord) {
-        setSelectedWord(selectedText);
-        setIsWaitingForWord(false);
-        toast({
-          title: "Word Selected",
-          description: `Word: "${selectedText}" - Press 'D' to select definition`,
-        });
-      } else if (isWaitingForDefinition) {
-        setSelectedDefinition(selectedText);
-        setIsWaitingForDefinition(false);
-        setIsDefining(true);
-        setDefinition(selectedText);
-        toast({
-          title: "Definition Selected",
-          description: `Definition captured. Complete the entry form.`,
-        });
-      }
-    }
-  };
 
   const generateAIEnrichment = async (word: string): Promise<string> => {
     // Simulate AI enrichment - in real implementation, this would call an AI API
@@ -227,7 +275,6 @@ const PDFViewer = () => {
                     <iframe
                       src={pdfUrl}
                       className="w-full h-full rounded-lg"
-                      onMouseUp={handleTextSelection}
                       title="PDF Viewer"
                     />
                   ) : (
