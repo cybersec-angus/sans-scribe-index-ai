@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Search, Highlighter, Save, BookOpen, List, Edit, Trash2, Brain, Sparkles } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Search, Highlighter, Save, BookOpen, List, Edit, Trash2, Brain, Sparkles, Wifi, WifiOff, Bug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIndexEntries } from "@/hooks/useIndexEntries";
 import { usePDFFiles } from "@/hooks/usePDFFiles";
@@ -73,7 +74,12 @@ const PDFViewer = () => {
   // AI Enhancement state
   const [openWebUIUrl, setOpenWebUIUrl] = useState("http://localhost:3000");
   const [apiKey, setApiKey] = useState("");
+  const [selectedModel, setSelectedModel] = useState("llama3.2");
   const [aiEnhancement, setAiEnhancement] = useState("");
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'failed'>('unknown');
+  const [debugResponse, setDebugResponse] = useState("");
+  const [showDebug, setShowDebug] = useState(false);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -280,6 +286,52 @@ const PDFViewer = () => {
     { name: "Orange", value: "#f97316", bg: "bg-orange-200" },
   ];
 
+  const testConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus('unknown');
+    setDebugResponse("");
+    
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+
+      const response = await fetch(`${openWebUIUrl}/api/models`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Connection failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setDebugResponse(JSON.stringify(data, null, 2));
+      setConnectionStatus('connected');
+      
+      toast({
+        title: "Connection Successful",
+        description: "Successfully connected to OpenWebUI server",
+      });
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      setDebugResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setConnectionStatus('failed');
+      
+      toast({
+        title: "Connection Failed",
+        description: "Could not connect to OpenWebUI server. Check your URL and settings.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const handleAIEnhancement = async () => {
     if (!selectedWord || !definition) {
       toast({
@@ -304,9 +356,14 @@ const PDFViewer = () => {
       definition: definition,
       openWebUIUrl: openWebUIUrl.trim(),
       apiKey: apiKey.trim() || undefined,
+      model: selectedModel,
     }, {
-      onSuccess: (enhancement) => {
+      onSuccess: (enhancement, variables) => {
         setAiEnhancement(enhancement);
+        setDebugResponse(`Enhancement successful for "${variables.word}"`);
+      },
+      onError: (error) => {
+        setDebugResponse(`Enhancement error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     });
   };
@@ -528,6 +585,67 @@ const PDFViewer = () => {
                       placeholder="Enter API key if required"
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="model-select">AI Model</Label>
+                    <Select value={selectedModel} onValueChange={setSelectedModel}>
+                      <SelectTrigger id="model-select">
+                        <SelectValue placeholder="Select a model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="llama3.2">Llama 3.2</SelectItem>
+                        <SelectItem value="llama3.1">Llama 3.1</SelectItem>
+                        <SelectItem value="mistral">Mistral</SelectItem>
+                        <SelectItem value="codellama">CodeLlama</SelectItem>
+                        <SelectItem value="gemma">Gemma</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={testConnection}
+                      variant="outline"
+                      size="sm"
+                      disabled={isTestingConnection || !openWebUIUrl.trim()}
+                      className="flex-1"
+                    >
+                      {isTestingConnection ? (
+                        <>Loading...</>
+                      ) : connectionStatus === 'connected' ? (
+                        <>
+                          <Wifi className="h-4 w-4 mr-2" />
+                          Connected
+                        </>
+                      ) : connectionStatus === 'failed' ? (
+                        <>
+                          <WifiOff className="h-4 w-4 mr-2" />
+                          Failed
+                        </>
+                      ) : (
+                        <>
+                          <Wifi className="h-4 w-4 mr-2" />
+                          Test Connection
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => setShowDebug(!showDebug)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Bug className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {showDebug && debugResponse && (
+                    <div className="mt-2">
+                      <Label>Debug Response</Label>
+                      <Textarea
+                        value={debugResponse}
+                        readOnly
+                        rows={4}
+                        className="bg-slate-50 text-xs font-mono"
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

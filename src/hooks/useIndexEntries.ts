@@ -114,11 +114,12 @@ export const useIndexEntries = () => {
   });
 
   const enhanceWithAI = useMutation({
-    mutationFn: async ({ word, definition, openWebUIUrl, apiKey }: { 
+    mutationFn: async ({ word, definition, openWebUIUrl, apiKey, model = 'llama3.2' }: { 
       word: string; 
       definition: string; 
       openWebUIUrl: string;
       apiKey?: string;
+      model?: string;
     }) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -132,7 +133,7 @@ export const useIndexEntries = () => {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          model: 'llama3.2',
+          model: model,
           messages: [
             {
               role: 'system',
