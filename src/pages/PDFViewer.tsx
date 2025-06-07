@@ -152,9 +152,7 @@ const PDFViewer = () => {
       <Button
         size="sm"
         onClick={() => {
-          const selectedText = props.selectedText;
-          console.log('Raw selected text:', selectedText);
-          handleHighlightText(selectedText);
+          handleHighlightText();
           props.cancel();
         }}
         className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 h-7"
@@ -176,15 +174,37 @@ const PDFViewer = () => {
     renderHighlightTarget,
   });
 
-  // Enhanced function to simulate native copy-paste behavior
-  const handleHighlightText = async (selectedText: string) => {
-    console.log('handleHighlightText called with raw text:', selectedText);
+  // Enhanced function to get native text selection
+  const handleHighlightText = async () => {
+    console.log('handleHighlightText called');
     
     try {
-      // First, copy the selected text to clipboard to simulate native behavior
-      await navigator.clipboard.writeText(selectedText);
+      // Get the current text selection from the browser
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        toast({
+          title: "No Text Selected",
+          description: "Please select some text first",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get the selected text directly from the selection
+      const selectedText = selection.toString();
+      console.log('Raw selected text from selection:', selectedText);
       
-      // Then immediately read it back to get the "native" formatted version
+      if (!selectedText.trim()) {
+        toast({
+          title: "No Text Selected",
+          description: "Please select some text first",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Copy to clipboard and read back to ensure we get the cleanest version
+      await navigator.clipboard.writeText(selectedText);
       const clipboardText = await navigator.clipboard.readText();
       console.log('Text from clipboard (native format):', clipboardText);
       
@@ -212,31 +232,13 @@ const PDFViewer = () => {
         });
       }
     } catch (error) {
-      console.error('Clipboard access failed, falling back to text processor:', error);
+      console.error('Text selection failed:', error);
       
-      // Fallback to the existing text processor if clipboard access fails
-      const cleanedText = cleanSelectedText(selectedText);
-      console.log('Fallback cleaned text:', cleanedText);
-      
-      if (isWaitingForWord && cleanedText) {
-        setSelectedWord(cleanedText);
-        setIsWaitingForWord(false);
-        
-        toast({
-          title: "Word Selected",
-          description: `Word: "${cleanedText}" - Press 'D' to select definition`,
-        });
-      } else if (isWaitingForDefinition && cleanedText) {
-        setSelectedDefinition(cleanedText);
-        setIsWaitingForDefinition(false);
-        setIsDefining(true);
-        setDefinition(cleanedText);
-        
-        toast({
-          title: "Definition Selected",
-          description: `Definition captured. Complete the entry form.`,
-        });
-      }
+      toast({
+        title: "Selection Failed",
+        description: "Please try selecting the text again",
+        variant: "destructive",
+      });
     }
   };
 
@@ -541,7 +543,7 @@ const PDFViewer = () => {
                         if (e.key === 'Enter') {
                           const text = (e.target as HTMLInputElement).value.trim();
                           if (text) {
-                            handleHighlightText(text);
+                            handleHighlightText();
                             (e.target as HTMLInputElement).value = '';
                           }
                         }
