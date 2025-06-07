@@ -20,11 +20,7 @@ import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import '@react-pdf-viewer/highlight/lib/styles/index.css';
 
-// Configure pdfjs worker
-import * as pdfjs from 'pdfjs-dist';
-
-// Set worker source to use the correct URL with .mjs extension
-pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@5.3.31/build/pdf.worker.min.mjs';
+// Note: We don't need to configure pdfjs worker manually when using @react-pdf-viewer's Worker component
 
 interface IndexEntry {
   id: string;
@@ -263,7 +259,7 @@ const PDFViewer = () => {
               <CardContent className="p-6 h-full">
                 <div className="h-full">
                   {pdfUrl ? (
-                    <Worker workerUrl="https://unpkg.com/pdfjs-dist@5.3.31/build/pdf.worker.min.mjs">
+                    <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
                       <Viewer
                         fileUrl={pdfUrl}
                         plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
