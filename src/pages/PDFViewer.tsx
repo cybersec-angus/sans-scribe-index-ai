@@ -46,6 +46,23 @@ const PDFViewer = () => {
     }
   }, [navigate]);
 
+  // Add keyboard event listener for spacebar
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'Space' && selectedText && !isDefining) {
+        event.preventDefault();
+        setIsDefining(true);
+        toast({
+          title: "Define Term",
+          description: `Ready to define: "${selectedText}"`,
+        });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedText, isDefining, toast]);
+
   const colors = [
     { name: "Yellow", value: "#fbbf24", bg: "bg-yellow-200" },
     { name: "Blue", value: "#3b82f6", bg: "bg-blue-200" },
@@ -58,11 +75,11 @@ const PDFViewer = () => {
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (selection && selection.toString().length > 0) {
-      setSelectedText(selection.toString().trim());
-      setIsDefining(true);
+      const newSelectedText = selection.toString().trim();
+      setSelectedText(newSelectedText);
       toast({
         title: "Text Selected",
-        description: `Selected: "${selection.toString().trim()}"`,
+        description: `Selected: "${newSelectedText}" - Press spacebar to define`,
       });
     }
   };
@@ -215,6 +232,17 @@ const PDFViewer = () => {
               </CardContent>
             </Card>
 
+            {/* Show selected text info */}
+            {selectedText && !isDefining && (
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm border-l-4 border-l-blue-500">
+                <CardContent className="p-4">
+                  <p className="text-sm text-slate-600 mb-2">Selected text:</p>
+                  <p className="font-medium text-slate-800 mb-2">"{selectedText}"</p>
+                  <p className="text-xs text-slate-500">Press spacebar to define this term</p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Definition Panel */}
             {isDefining && (
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -329,6 +357,20 @@ const PDFViewer = () => {
       </div>
     </div>
   );
+};
+
+const generateAIEnrichment = async (word: string): Promise<string> => {
+  // Simulate AI enrichment - in real implementation, this would call an AI API
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(`AI Context: ${word} is commonly used in cybersecurity contexts. Related concepts include network security, threat analysis, and defensive measures.`);
+    }, 1000);
+  });
+};
+
+const highlightText = () => {
+  // This function was moved outside the component for clarity
+  // In a real implementation, this would interact with PDF.js to highlight text
 };
 
 export default PDFViewer;
