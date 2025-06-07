@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { useIndexEntries } from "@/hooks/useIndexEntries";
 import { usePDFFiles } from "@/hooks/usePDFFiles";
 import { PDFUploadForm } from "@/components/PDFUploadForm";
 import { FlashcardViewer } from "@/components/FlashcardViewer";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState } from "react";
 
 const Index = () => {
@@ -80,52 +82,57 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       <div className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">
-            SANS Course Material Indexer
-          </h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-            Upload your SANS PDF course materials and create a comprehensive, searchable index 
-            of definitions with AI-powered enrichment and smart organization.
-          </p>
+        {/* Header with Theme Toggle */}
+        <div className="flex justify-between items-start mb-8">
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold text-foreground mb-4">
+              SANS Course Material Indexer
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Upload your SANS PDF course materials and create a comprehensive, searchable index 
+              of definitions with AI-powered enrichment and smart organization.
+            </p>
+          </div>
+          <div className="ml-4">
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-card/80 backdrop-blur-sm border shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <FileText className="h-8 w-8 text-blue-600" />
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{pdfFiles.length}</p>
-                  <p className="text-sm text-slate-600">PDFs Uploaded</p>
+                  <p className="text-2xl font-bold text-card-foreground">{pdfFiles.length}</p>
+                  <p className="text-sm text-muted-foreground">PDFs Uploaded</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-card/80 backdrop-blur-sm border shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <BookOpen className="h-8 w-8 text-green-600" />
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{entries.length}</p>
-                  <p className="text-sm text-slate-600">Definitions Indexed</p>
+                  <p className="text-2xl font-bold text-card-foreground">{entries.length}</p>
+                  <p className="text-sm text-muted-foreground">Definitions Indexed</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-card/80 backdrop-blur-sm border shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <Settings className="h-8 w-8 text-purple-600" />
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">Ready</p>
-                  <p className="text-sm text-slate-600">System Status</p>
+                  <p className="text-2xl font-bold text-card-foreground">Ready</p>
+                  <p className="text-sm text-muted-foreground">System Status</p>
                 </div>
               </div>
             </CardContent>
@@ -144,16 +151,16 @@ const Index = () => {
             
             {/* PDF List with Individual Actions */}
             {pdfFiles.length > 0 && (
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="text-slate-800">Available PDFs</CardTitle>
+                  <CardTitle className="text-card-foreground">Available PDFs</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {pdfFiles.map((pdf) => (
-                    <div key={pdf.id} className="flex items-center justify-between p-3 bg-white/60 rounded-lg border">
+                    <div key={pdf.id} className="flex items-center justify-between p-3 bg-card/60 rounded-lg border">
                       <div className="flex-1">
-                        <p className="font-medium text-slate-800">{pdf.file_name}</p>
-                        <p className="text-sm text-slate-600">
+                        <p className="font-medium text-card-foreground">{pdf.file_name}</p>
+                        <p className="text-sm text-muted-foreground">
                           {pdf.course_code} • Book {pdf.book_number} • Offset: {pdf.page_offset}
                         </p>
                       </div>
@@ -172,9 +179,9 @@ const Index = () => {
           </div>
 
           {/* Settings Section */}
-          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+          <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-slate-800">
+              <CardTitle className="flex items-center gap-3 text-card-foreground">
                 <Settings className="h-6 w-6 text-purple-600" />
                 Watermark Settings
               </CardTitle>
@@ -190,7 +197,7 @@ const Index = () => {
                   className="mt-1"
                   disabled={isUpdating}
                 />
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Enter the email shown in your SANS PDF watermarks
                 </p>
               </div>
@@ -205,7 +212,7 @@ const Index = () => {
                   className="mt-1"
                   disabled={isUpdating}
                 />
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Enter the timestamp pattern from your SANS PDF watermarks
                 </p>
               </div>
@@ -243,7 +250,7 @@ const Index = () => {
             onClick={() => navigate('/index-manager')}
             variant="outline"
             size="lg"
-            className="bg-white/80 border-slate-200 hover:bg-white"
+            className="bg-card/80 border hover:bg-card"
           >
             <BookOpen className="h-5 w-5 mr-2" />
             View Index Manager
