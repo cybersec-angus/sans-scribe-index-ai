@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import { useIndexEntries } from "@/hooks/useIndexEntries";
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { highlightPlugin } from '@react-pdf-viewer/highlight';
-import type { HighlightArea, NewHighlight } from '@react-pdf-viewer/highlight';
+import type { HighlightArea } from '@react-pdf-viewer/highlight';
 
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -30,6 +29,15 @@ interface IndexEntry {
   notes?: string;
   colorCode: string;
   aiEnrichment?: string;
+}
+
+interface CustomHighlight {
+  id: string;
+  content: {
+    text: string;
+    color: string;
+  };
+  highlightAreas: HighlightArea[];
 }
 
 const PDFViewer = () => {
@@ -48,7 +56,7 @@ const PDFViewer = () => {
   const [bookNumber, setBookNumber] = useState("");
   const [colorCode, setColorCode] = useState("#fbbf24");
   const [showDefinitions, setShowDefinitions] = useState(false);
-  const [highlights, setHighlights] = useState<NewHighlight[]>([]);
+  const [highlights, setHighlights] = useState<CustomHighlight[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { entries, createEntry } = useIndexEntries();
@@ -285,9 +293,9 @@ const PDFViewer = () => {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-sm text-slate-600">1. Press 'W' to start word selection</p>
-                  <p className="text-sm text-slate-600">2. Select a word in the PDF</p>
+                  <p className="text-sm text-slate-600">2. Enter a word in the input field</p>
                   <p className="text-sm text-slate-600">3. Press 'D' to select definition</p>
-                  <p className="text-sm text-slate-600">4. Select definition text in the PDF</p>
+                  <p className="text-sm text-slate-600">4. Enter definition text in the input field</p>
                   <p className="text-sm text-slate-600">5. Complete the form and save</p>
                 </CardContent>
               </Card>
@@ -297,14 +305,14 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-yellow-50 border-l-4 border-l-yellow-500">
                   <CardHeader>
                     <CardTitle className="text-sm text-yellow-800">
-                      {isWaitingForWord ? "Select Word in PDF" : "Select Definition in PDF"}
+                      {isWaitingForWord ? "Enter Word" : "Enter Definition"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="text-xs text-yellow-700">
                       {isWaitingForWord 
-                        ? "Select text in the PDF viewer above or enter manually:" 
-                        : "Select definition text in the PDF viewer above or enter manually:"
+                        ? "Enter the word you want to define:" 
+                        : "Enter the definition text:"
                       }
                     </p>
                     <Input
@@ -357,7 +365,7 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-blue-50 border-l-4 border-l-blue-500">
                   <CardContent className="p-4">
                     <p className="text-sm font-medium text-blue-800">Waiting for word selection...</p>
-                    <p className="text-xs text-blue-600">Select text in the PDF or use the input field above</p>
+                    <p className="text-xs text-blue-600">Enter text in the input field above</p>
                   </CardContent>
                 </Card>
               )}
@@ -376,7 +384,7 @@ const PDFViewer = () => {
                 <Card className="shadow-lg border-0 bg-orange-50 border-l-4 border-l-orange-500">
                   <CardContent className="p-4">
                     <p className="text-sm font-medium text-orange-800">Waiting for definition...</p>
-                    <p className="text-xs text-orange-600">Select text in the PDF or use the input field above</p>
+                    <p className="text-xs text-orange-600">Enter text in the input field above</p>
                   </CardContent>
                 </Card>
               )}
