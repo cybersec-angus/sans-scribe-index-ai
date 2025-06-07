@@ -51,27 +51,33 @@ export type Database = {
       pdf_files: {
         Row: {
           book_number: string
+          course_code: string | null
           file_name: string
           file_size: number | null
           id: string
+          page_offset: number | null
           upload_date: string
           watermark_email: string | null
           watermark_timestamp: string | null
         }
         Insert: {
           book_number: string
+          course_code?: string | null
           file_name: string
           file_size?: number | null
           id?: string
+          page_offset?: number | null
           upload_date?: string
           watermark_email?: string | null
           watermark_timestamp?: string | null
         }
         Update: {
           book_number?: string
+          course_code?: string | null
           file_name?: string
           file_size?: number | null
           id?: string
+          page_offset?: number | null
           upload_date?: string
           watermark_email?: string | null
           watermark_timestamp?: string | null

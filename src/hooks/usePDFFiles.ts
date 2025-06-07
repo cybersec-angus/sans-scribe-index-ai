@@ -31,15 +31,19 @@ export const usePDFFiles = () => {
   });
 
   const uploadPDFFile = useMutation({
-    mutationFn: async (file: File) => {
-      console.log('Processing PDF file:', file.name);
-      
-      // Extract book number from filename (assuming format like "BOOK1.pdf" or similar)
-      const bookNumber = file.name.replace(/\.pdf$/i, '').toUpperCase();
+    mutationFn: async ({ file, courseCode, bookNumber, pageOffset }: {
+      file: File;
+      courseCode: string;
+      bookNumber: string;
+      pageOffset: number;
+    }) => {
+      console.log('Processing PDF file:', file.name, 'Course:', courseCode, 'Book:', bookNumber, 'Offset:', pageOffset);
       
       const pdfFileData: PDFFileInsert = {
         file_name: file.name,
         book_number: bookNumber,
+        course_code: courseCode,
+        page_offset: pageOffset,
         file_size: file.size,
       };
 
@@ -64,7 +68,7 @@ export const usePDFFiles = () => {
       queryClient.invalidateQueries({ queryKey: ['pdf_files'] });
       toast({
         title: "PDF Uploaded",
-        description: `${data.file_name} has been successfully uploaded and is ready for indexing.`,
+        description: `${data.file_name} has been successfully uploaded and configured.`,
       });
     },
     onError: (error) => {
@@ -118,10 +122,14 @@ export const usePDFFiles = () => {
     return URL.createObjectURL(file);
   };
 
+  const uploadPDFWithConfig = (file: File, courseCode: string, bookNumber: string, pageOffset: number) => {
+    uploadPDFFile.mutate({ file, courseCode, bookNumber, pageOffset });
+  };
+
   return {
     pdfFiles,
     isLoading,
-    uploadPDFFile: uploadPDFFile.mutate,
+    uploadPDFFile: uploadPDFWithConfig,
     deletePDFFile: deletePDFFile.mutate,
     isUploading: uploadPDFFile.isPending,
     isDeleting: deletePDFFile.isPending,
