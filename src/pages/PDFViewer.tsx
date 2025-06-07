@@ -20,7 +20,7 @@ import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import '@react-pdf-viewer/highlight/lib/styles/index.css';
 
-// Note: Using compatible worker URL for react-pdf-viewer
+// Note: Using matching pdfjs-dist@3.4.120 worker for compatibility
 
 interface IndexEntry {
   id: string;
