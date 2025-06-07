@@ -20,6 +20,12 @@ import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import '@react-pdf-viewer/highlight/lib/styles/index.css';
 
+// Configure pdfjs worker
+import * as pdfjs from 'pdfjs-dist';
+
+// Set worker source to use a working CDN with proper CORS headers
+pdfjs.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.min.js';
+
 interface IndexEntry {
   id: string;
   word: string;
@@ -257,18 +263,16 @@ const PDFViewer = () => {
               <CardContent className="p-6 h-full">
                 <div className="h-full">
                   {pdfUrl ? (
-                    <Worker workerUrl="https://unpkg.com/pdfjs-dist@5.3.31/build/pdf.worker.min.js">
-                      <Viewer
-                        fileUrl={pdfUrl}
-                        plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
-                        onDocumentLoad={(e) => {
-                          console.log('PDF loaded with', e.doc.numPages, 'pages');
-                        }}
-                        onPageChange={(e) => {
-                          setCurrentPage(e.currentPage + 1); // PDF viewer is 0-indexed
-                        }}
-                      />
-                    </Worker>
+                    <Viewer
+                      fileUrl={pdfUrl}
+                      plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
+                      onDocumentLoad={(e) => {
+                        console.log('PDF loaded with', e.doc.numPages, 'pages');
+                      }}
+                      onPageChange={(e) => {
+                        setCurrentPage(e.currentPage + 1); // PDF viewer is 0-indexed
+                      }}
+                    />
                   ) : (
                     <div className="h-full flex items-center justify-center text-center text-slate-500">
                       <div>
