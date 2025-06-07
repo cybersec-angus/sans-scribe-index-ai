@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Search, Highlighter, Save, BookOpen, List } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIndexEntries } from "@/hooks/useIndexEntries";
+import { cleanSelectedText } from "@/utils/textProcessor";
 
 // React PDF Viewer imports
 import { Worker, Viewer } from '@react-pdf-viewer/core';
@@ -125,131 +126,11 @@ const PDFViewer = () => {
   });
 
   // Enhanced function to clean up selected text with better word boundary detection
-  const cleanText = (text: string): string => {
-    let cleaned = text;
-    
-    console.log('Original text:', JSON.stringify(cleaned));
-    
-    // Common words and prefixes to help with reconstruction
-    const commonWords = [
-      'attacks', 'focused', 'earning', 'money', 'generating', 'revenue', 'malicious', 'group', 'perpetrator', 'perpetrators',
-      'some', 'most', 'common', 'attack', 'methods', 'these', 'days', 'ransomware', 'both', 'against', 'organizations',
-      'individuals', 'denial', 'service', 'with', 'business', 'critical', 'data', 'encrypted', 'after', 'which',
-      'ransom', 'asked', 'allow', 'recovered', 'typical', 'technique', 'would', 'disrupt', 'online', 'presence',
-      'organization', 'stop', 'and', 'the', 'for', 'are', 'can', 'not', 'but', 'all', 'any', 'had', 'her', 'was',
-      'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see',
-      'two', 'way', 'who', 'boy', 'did', 'she', 'use', 'her', 'man', 'new', 'say', 'each', 'make', 'most', 'over',
-      'said', 'some', 'time', 'very', 'when', 'come', 'here', 'just', 'like', 'long', 'many', 'over', 'such', 'take',
-      'than', 'them', 'well', 'were', 'what', 'will', 'work', 'year', 'your', 'from', 'they', 'been', 'have', 'their',
-      'there', 'would', 'could', 'should', 'being', 'where', 'while', 'about', 'above', 'below', 'under', 'through'
-    ];
-    
-    // Check if text has the characteristic spacing issue (lots of single chars followed by spaces)
-    const spacedPattern = /(\w\s){8,}/;
-    
-    if (spacedPattern.test(cleaned)) {
-      console.log('Detected spaced text pattern, attempting reconstruction...');
-      
-      // Step 1: Remove all spaces to get the base text
-      const noSpaces = cleaned.replace(/\s+/g, '');
-      console.log('Text without spaces:', noSpaces);
-      
-      // Step 2: Try to rebuild words by matching against common words
-      let result = '';
-      let position = 0;
-      
-      while (position < noSpaces.length) {
-        let foundMatch = false;
-        
-        // Try to match common words (longest first)
-        const sortedWords = commonWords.sort((a, b) => b.length - a.length);
-        
-        for (const word of sortedWords) {
-          const substring = noSpaces.substring(position, position + word.length).toLowerCase();
-          if (substring === word.toLowerCase()) {
-            if (result && !/[\s\(\)\-\/]$/.test(result)) {
-              result += ' ';
-            }
-            result += noSpaces.substring(position, position + word.length);
-            position += word.length;
-            foundMatch = true;
-            break;
-          }
-        }
-        
-        // If no word match found, add the character and continue
-        if (!foundMatch) {
-          const char = noSpaces[position];
-          result += char;
-          
-          // Add space after punctuation or before certain characters
-          if (/[.,:;!?]/.test(char) && position < noSpaces.length - 1) {
-            result += ' ';
-          } else if (char === ')' && position < noSpaces.length - 1 && /[a-zA-Z]/.test(noSpaces[position + 1])) {
-            result += ' ';
-          } else if (char === '(' && position > 0 && /[a-zA-Z]/.test(noSpaces[position - 1])) {
-            result = result.slice(0, -1) + ' ' + char;
-          }
-          
-          position++;
-        }
-      }
-      
-      cleaned = result;
-    } else {
-      console.log('No extreme spacing detected, applying word boundary fixes...');
-      
-      // For text that's mostly correct but has some missing spaces, use regex to add spaces
-      // Add space before capital letters that follow lowercase letters
-      cleaned = cleaned.replace(/([a-z])([A-Z])/g, '$1 $2');
-      
-      // Add spaces around common word boundaries
-      cleaned = cleaned
-        .replace(/(\w)(of)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(the)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(and)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(for)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(are)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(with)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(that)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(this)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(some)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(most)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(attack)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(service)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(data)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(be)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(to)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(is)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(as)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(on)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(in)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(we)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(an)(\w)/gi, '$1 $2 $3')
-        .replace(/(\w)(a)(\w)/gi, '$1 $2 $3');
-    }
-    
-    // Final cleanup
-    cleaned = cleaned
-      .replace(/\s+/g, ' ')
-      .trim()
-      // Fix common patterns
-      .replace(/(\w)-\s+of\s+-\s+(\w)/g, '$1-of-$2') // Fix "denial - of - service"
-      .replace(/\s+([.,:;!?])/g, '$1') // Remove space before punctuation
-      .replace(/([.,:;!?])(\w)/g, '$1 $2') // Add space after punctuation
-      .replace(/\(\s+/g, '(') // Remove space after opening parenthesis
-      .replace(/\s+\)/g, ')') // Remove space before closing parenthesis
-      .replace(/(\w)\s*\/\s*(\w)/g, '$1/$2'); // Fix spaces around slashes
-    
-    console.log('Final cleaned text:', JSON.stringify(cleaned));
-    return cleaned;
-  };
-
   const handleHighlightText = (selectedText: string) => {
     console.log('handleHighlightText called with raw text:', selectedText);
     
-    // Clean the selected text
-    const cleanedText = cleanText(selectedText);
+    // Clean the selected text using the new dictionary-based processor
+    const cleanedText = cleanSelectedText(selectedText);
     console.log('Cleaned text:', cleanedText);
     
     if (isWaitingForWord && cleanedText) {
