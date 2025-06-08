@@ -108,7 +108,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ entries, onClo
                 <h2 className="text-3xl font-bold text-foreground mb-4">{currentEntry.word}</h2>
                 <p className="text-muted-foreground text-sm">Click to reveal definition</p>
                 <div className="mt-4 text-xs text-muted-foreground">
-                  Page {currentEntry.page_number} • {currentEntry.book_number}{pdfFile?.course_code ? ` • ${pdfFile.course_code}` : ''}
+                  Page {currentEntry.page_number} • Book {currentEntry.book_number}{pdfFile?.course_code ? ` • ${pdfFile.course_code}` : ''}
                 </div>
               </div>
             ) : (
@@ -124,7 +124,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ entries, onClo
                   </p>
                 )}
                 <div className="text-xs text-muted-foreground">
-                  Page {currentEntry.page_number} • {currentEntry.book_number}{pdfFile?.course_code ? ` • ${pdfFile.course_code}` : ''}
+                  Page {currentEntry.page_number} • Book {currentEntry.book_number}{pdfFile?.course_code ? ` • ${pdfFile.course_code}` : ''}
                 </div>
                 <p className="text-muted-foreground text-sm">Click to show word</p>
               </div>
