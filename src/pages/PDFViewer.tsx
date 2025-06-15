@@ -67,7 +67,7 @@ const PDFViewer = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageOffset, setPageOffset] = useState(0);
   const [isWaitingForWord, setIsWaitingForWord] = useState(false);
-  const [isWaitingForDefinition, setIsWaitingWaitingForDefinition] = useState(false);
+  const [isWaitingForDefinition, setIsWaitingForDefinition] = useState(false);
   const [isDefining, setIsDefining] = useState(false);
   const [definition, setDefinition] = useState("");
   const [notes, setNotes] = useState("");
