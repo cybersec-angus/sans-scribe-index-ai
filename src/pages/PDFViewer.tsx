@@ -81,7 +81,7 @@ const PDFViewer = () => {
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
-  // AI Enhancement state
+  // AI Enhancement state (moved from separate panel)
   const [openWebUIUrl, setOpenWebUIUrl] = useState("http://localhost:3000");
   const [apiKey, setApiKey] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
@@ -609,109 +609,12 @@ const PDFViewer = () => {
                 </CardContent>
               </Card>
 
-              {/* AI Settings */}
-              <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-card-foreground">
-                    <Sparkles className="h-5 w-5" />
-                    AI Enhancement Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="openwebui-url">OpenWebUI Server URL</Label>
-                    <Input
-                      id="openwebui-url"
-                      value={openWebUIUrl}
-                      onChange={(e) => setOpenWebUIUrl(e.target.value)}
-                      placeholder="http://localhost:3000"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="api-key">API Key (Optional)</Label>
-                    <Input
-                      id="api-key"
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="Enter API key if required"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="model-select">AI Model</Label>
-                    <Select value={selectedModel} onValueChange={setSelectedModel} disabled={availableModels.length === 0}>
-                      <SelectTrigger id="model-select">
-                        <SelectValue placeholder={availableModels.length === 0 ? "Test connection to load models" : "Select a model"} />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover border border-border shadow-lg z-50">
-                        {availableModels.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {model.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {availableModels.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {availableModels.length} model(s) available
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={testConnection}
-                      variant="outline"
-                      size="sm"
-                      disabled={isTestingConnection || !openWebUIUrl.trim()}
-                      className="flex-1"
-                    >
-                      {isTestingConnection ? (
-                        <>Loading...</>
-                      ) : connectionStatus === 'connected' ? (
-                        <>
-                          <Wifi className="h-4 w-4 mr-2" />
-                          Connected
-                        </>
-                      ) : connectionStatus === 'failed' ? (
-                        <>
-                          <WifiOff className="h-4 w-4 mr-2" />
-                          Failed
-                        </>
-                      ) : (
-                        <>
-                          <Wifi className="h-4 w-4 mr-2" />
-                          Test Connection
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      onClick={() => setShowDebug(!showDebug)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Bug className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {showDebug && debugResponse && (
-                    <div className="mt-2">
-                      <Label>Debug Response</Label>
-                      <Textarea
-                        value={debugResponse}
-                        readOnly
-                        rows={4}
-                        className="bg-muted text-xs font-mono"
-                      />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* AI Indexing Panel */}
-              {pdfId && bookNumber && (
+              {/* AI Indexing Panel - Replaces AI Enhancement Panel */}
+              {pdfId && (
                 <AIIndexingPanel
                   pdfId={pdfId}
                   pdfName={pdfName}
-                  bookNumber={bookNumber}
+                  bookNumber={bookNumber || pdfName}
                   currentPage={currentPage}
                   pageOffset={pageOffset}
                   openWebUIUrl={openWebUIUrl}
@@ -831,7 +734,7 @@ const PDFViewer = () => {
                 </Card>
               )}
 
-              {/* Definition Panel */}
+              {/* Definition Panel - Now includes AI Enhancement functionality */}
               {isDefining && (
                 <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
                   <CardHeader>
@@ -888,7 +791,7 @@ const PDFViewer = () => {
                       </div>
                     </div>
 
-                    {/* AI Enhancement Section */}
+                    {/* AI Enhancement Section - Integrated from the old AI Enhancement panel */}
                     <div className="border-t border-border pt-4">
                       <div className="flex items-center justify-between mb-2">
                         <Label>AI Enhancement</Label>
