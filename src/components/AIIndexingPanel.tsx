@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,10 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Brain, Play, Pause, Square, Zap, AlertCircle, Settings } from 'lucide-react';
+import { Brain, Play, Pause, Square, Zap, AlertCircle, Settings, TestTube, Save } from 'lucide-react';
 import { useAIIndexing } from '@/hooks/useAIIndexing';
 import { usePDFFiles } from '@/hooks/usePDFFiles';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 interface AIIndexingPanelProps {
   pdfId: string;
@@ -17,9 +20,6 @@ interface AIIndexingPanelProps {
   bookNumber: string;
   currentPage: number;
   pageOffset: number;
-  openWebUIUrl: string;
-  apiKey: string;
-  selectedModel: string;
   onExtractText: (pageNumber: number) => Promise<string>;
 }
 
@@ -29,11 +29,17 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
   bookNumber,
   currentPage,
   pageOffset,
-  openWebUIUrl,
-  apiKey,
-  selectedModel,
   onExtractText,
 }) => {
+  const { toast } = useToast();
+  const { settings, updateSettings, isUpdating } = useUserSettings();
+  
+  const [localOpenWebUIUrl, setLocalOpenWebUIUrl] = useState(settings?.openwebui_url || '');
+  const [localApiKey, setLocalApiKey] = useState(settings?.openwebui_api_key || '');
+  const [localSelectedModel, setLocalSelectedModel] = useState(settings?.openwebui_model || '');
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<'success' | 'error' | null>(null);
+  
   const [startPage, setStartPage] = useState(currentPage);
   const [endPage, setEndPage] = useState(currentPage);
   const [activeSession, setActiveSession] = useState<any>(null);
@@ -53,8 +59,74 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
     isSavingTerms,
   } = useAIIndexing();
 
+  // Update local state when settings change
+  React.useEffect(() => {
+    if (settings) {
+      setLocalOpenWebUIUrl(settings.openwebui_url || '');
+      setLocalApiKey(settings.openwebui_api_key || '');
+      setLocalSelectedModel(settings.openwebui_model || '');
+    }
+  }, [settings]);
+
+  const handleSaveSettings = () => {
+    updateSettings({
+      openwebui_url: localOpenWebUIUrl.trim(),
+      openwebui_api_key: localApiKey.trim(),
+      openwebui_model: localSelectedModel,
+    });
+  };
+
+  const handleTestConnection = async () => {
+    if (!localOpenWebUIUrl.trim()) {
+      toast({
+        title: "Configuration Required",
+        description: "Please enter the OpenWebUI URL first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingConnection(true);
+    setConnectionTestResult(null);
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (localApiKey.trim()) {
+        headers['Authorization'] = `Bearer ${localApiKey.trim()}`;
+      }
+
+      const response = await fetch(`${localOpenWebUIUrl.trim()}/api/models`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (response.ok) {
+        setConnectionTestResult('success');
+        toast({
+          title: "Connection Successful",
+          description: "Successfully connected to OpenWebUI.",
+        });
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      setConnectionTestResult('error');
+      toast({
+        title: "Connection Failed",
+        description: `Failed to connect to OpenWebUI: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const handleStartIndexing = async () => {
-    if (!openWebUIUrl.trim() || !selectedModel) {
+    if (!localOpenWebUIUrl.trim() || !localSelectedModel) {
       return;
     }
 
@@ -107,9 +179,9 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
             pageText,
             pageNumber: actualPageNumber,
             bookNumber,
-            openWebUIUrl,
-            apiKey,
-            model: selectedModel,
+            openWebUIUrl: localOpenWebUIUrl.trim(),
+            apiKey: localApiKey.trim(),
+            model: localSelectedModel,
           }, {
             onSuccess: async (aiResponse) => {
               if (aiResponse.terms && aiResponse.terms.length > 0) {
@@ -195,7 +267,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
   };
 
   const handleIndexCurrentPage = async () => {
-    if (!openWebUIUrl.trim() || !selectedModel) {
+    if (!localOpenWebUIUrl.trim() || !localSelectedModel) {
       return;
     }
 
@@ -220,9 +292,9 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
         pageText,
         pageNumber: actualPageNumber,
         bookNumber,
-        openWebUIUrl,
-        apiKey,
-        model: selectedModel,
+        openWebUIUrl: localOpenWebUIUrl.trim(),
+        apiKey: localApiKey.trim(),
+        model: localSelectedModel,
       }, {
         onSuccess: async (aiResponse) => {
           if (aiResponse.terms && aiResponse.terms.length > 0) {
@@ -256,20 +328,13 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
     }
   };
 
-  const isConfigured = openWebUIUrl.trim() && selectedModel;
+  const isConfigured = localOpenWebUIUrl.trim() && localSelectedModel;
   const canStartBatch = isConfigured && startPage <= endPage && !isProcessing;
   const canIndexCurrent = isConfigured && !isProcessing;
-
-  console.log('AI Indexing Panel Debug:', {
-    openWebUIUrl: openWebUIUrl?.slice(0, 20) + '...',
-    selectedModel,
-    isConfigured,
-    canStartBatch,
-    canIndexCurrent,
-    currentPage,
-    startPage,
-    endPage
-  });
+  const hasUnsavedChanges = 
+    localOpenWebUIUrl !== (settings?.openwebui_url || '') ||
+    localApiKey !== (settings?.openwebui_api_key || '') ||
+    localSelectedModel !== (settings?.openwebui_model || '');
 
   return (
     <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
@@ -280,25 +345,92 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Configuration Status */}
-        <div className="p-3 rounded-lg bg-muted/50">
-          <div className="flex items-center gap-2 text-sm">
+        {/* Configuration Section */}
+        <div className="space-y-3 p-4 border rounded-lg bg-background/50">
+          <Label className="text-base font-semibold flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            <span className="font-medium">Configuration Status</span>
-          </div>
-          <div className="mt-2 space-y-1 text-xs">
-            <div className="flex justify-between">
-              <span>OpenWebUI URL:</span>
-              <span className={openWebUIUrl.trim() ? 'text-green-600' : 'text-red-600'}>
-                {openWebUIUrl.trim() ? '✓ Configured' : '✗ Not set'}
-              </span>
+            OpenWebUI Configuration
+          </Label>
+          
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="openwebui-url">OpenWebUI URL</Label>
+              <Input
+                id="openwebui-url"
+                placeholder="http://localhost:3000 or https://your-openwebui.com"
+                value={localOpenWebUIUrl}
+                onChange={(e) => setLocalOpenWebUIUrl(e.target.value)}
+                disabled={isProcessing}
+              />
             </div>
-            <div className="flex justify-between">
-              <span>AI Model:</span>
-              <span className={selectedModel ? 'text-green-600' : 'text-red-600'}>
-                {selectedModel ? `✓ ${selectedModel}` : '✗ Not selected'}
-              </span>
+            
+            <div>
+              <Label htmlFor="api-key">API Key (Optional)</Label>
+              <Input
+                id="api-key"
+                type="password"
+                placeholder="Your OpenWebUI API key (if required)"
+                value={localApiKey}
+                onChange={(e) => setLocalApiKey(e.target.value)}
+                disabled={isProcessing}
+              />
             </div>
+            
+            <div>
+              <Label htmlFor="model-select">AI Model</Label>
+              <Select 
+                value={localSelectedModel} 
+                onValueChange={setLocalSelectedModel}
+                disabled={isProcessing}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="llama3.2">Llama 3.2</SelectItem>
+                  <SelectItem value="llama3.1">Llama 3.1</SelectItem>
+                  <SelectItem value="llama3">Llama 3</SelectItem>
+                  <SelectItem value="mixtral">Mixtral</SelectItem>
+                  <SelectItem value="codellama">CodeLlama</SelectItem>
+                  <SelectItem value="phi3">Phi-3</SelectItem>
+                  <SelectItem value="gemma2">Gemma 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleTestConnection}
+                disabled={!localOpenWebUIUrl.trim() || isTestingConnection}
+                variant="outline"
+                size="sm"
+                className="flex-1"
+              >
+                <TestTube className="h-4 w-4 mr-2" />
+                {isTestingConnection ? 'Testing...' : 'Test Connection'}
+              </Button>
+              
+              <Button
+                onClick={handleSaveSettings}
+                disabled={!hasUnsavedChanges || isUpdating}
+                size="sm"
+                className="flex-1"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isUpdating ? 'Saving...' : 'Save Settings'}
+              </Button>
+            </div>
+
+            {connectionTestResult && (
+              <Alert className={connectionTestResult === 'success' ? 'border-green-500' : 'border-red-500'}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {connectionTestResult === 'success' 
+                    ? 'Connection successful! You can now use AI indexing.' 
+                    : 'Connection failed. Please check your URL and try again.'}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </div>
 
@@ -306,12 +438,12 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Please configure your OpenWebUI settings and test the connection before using AI indexing.
+              Please configure your OpenWebUI settings above and test the connection before using AI indexing.
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Single Page Indexing - Always Visible */}
+        {/* Single Page Indexing */}
         <div className="space-y-3 p-4 border rounded-lg bg-background/50">
           <Label className="text-base font-semibold">Quick Index Current Page</Label>
           <Button
@@ -330,7 +462,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
           )}
         </div>
 
-        {/* Batch Indexing Section - Always Visible */}
+        {/* Batch Indexing Section */}
         <div className="space-y-3 p-4 border rounded-lg bg-background/50">
           <Label className="text-base font-semibold">Batch Indexing</Label>
           
@@ -371,7 +503,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
             </div>
           )}
 
-          {/* Main Start Indexing Button - Always Visible */}
+          {/* Main Start Indexing Button */}
           <div className="flex gap-2">
             {!isProcessing ? (
               <Button
