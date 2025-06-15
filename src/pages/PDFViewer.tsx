@@ -13,6 +13,8 @@ import { usePDFFiles } from "@/hooks/usePDFFiles";
 import { cleanSelectedText } from "@/utils/textProcessor";
 import { FlashcardViewer } from "@/components/FlashcardViewer";
 import { EditEntryDialog } from "@/components/EditEntryDialog";
+import { AIIndexingPanel } from "@/components/AIIndexingPanel";
+import { extractTextFromPDF } from "@/utils/pdfTextExtractor";
 
 // React PDF Viewer imports
 import { Worker, Viewer } from '@react-pdf-viewer/core';
@@ -65,7 +67,7 @@ const PDFViewer = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageOffset, setPageOffset] = useState(0);
   const [isWaitingForWord, setIsWaitingForWord] = useState(false);
-  const [isWaitingForDefinition, setIsWaitingForDefinition] = useState(false);
+  const [isWaitingForDefinition, setIsWaitingWaitingForDefinition] = useState(false);
   const [isDefining, setIsDefining] = useState(false);
   const [definition, setDefinition] = useState("");
   const [notes, setNotes] = useState("");
@@ -493,6 +495,20 @@ const PDFViewer = () => {
     }
   };
 
+  // Add text extraction function
+  const handleExtractText = async (pageNumber: number): Promise<string> => {
+    if (!pdfId) {
+      throw new Error('No PDF loaded');
+    }
+    
+    const file = getPDFFile(pdfId);
+    if (!file) {
+      throw new Error('PDF file not found');
+    }
+    
+    return await extractTextFromPDF(file, pageNumber);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-6">
@@ -689,6 +705,21 @@ const PDFViewer = () => {
                   )}
                 </CardContent>
               </Card>
+
+              {/* AI Indexing Panel */}
+              {pdfId && bookNumber && (
+                <AIIndexingPanel
+                  pdfId={pdfId}
+                  pdfName={pdfName}
+                  bookNumber={bookNumber}
+                  currentPage={currentPage}
+                  pageOffset={pageOffset}
+                  openWebUIUrl={openWebUIUrl}
+                  apiKey={apiKey}
+                  selectedModel={selectedModel}
+                  onExtractText={handleExtractText}
+                />
+              )}
 
               {/* Enhanced Search */}
               <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">

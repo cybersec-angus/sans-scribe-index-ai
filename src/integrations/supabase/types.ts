@@ -9,12 +9,55 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_indexing_sessions: {
+        Row: {
+          created_at: string
+          current_page: number
+          id: string
+          pdf_file_id: string | null
+          start_page: number
+          status: string | null
+          total_pages_processed: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_page: number
+          id?: string
+          pdf_file_id?: string | null
+          start_page: number
+          status?: string | null
+          total_pages_processed?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_page?: number
+          id?: string
+          pdf_file_id?: string | null
+          start_page?: number
+          status?: string | null
+          total_pages_processed?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_indexing_sessions_pdf_file_id_fkey"
+            columns: ["pdf_file_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       index_entries: {
         Row: {
           ai_enrichment: string | null
+          ai_indexing_session_id: string | null
           book_number: string
           color_code: string
           created_at: string
+          created_by_ai: boolean | null
           definition: string
           id: string
           notes: string | null
@@ -24,9 +67,11 @@ export type Database = {
         }
         Insert: {
           ai_enrichment?: string | null
+          ai_indexing_session_id?: string | null
           book_number: string
           color_code?: string
           created_at?: string
+          created_by_ai?: boolean | null
           definition: string
           id?: string
           notes?: string | null
@@ -36,9 +81,11 @@ export type Database = {
         }
         Update: {
           ai_enrichment?: string | null
+          ai_indexing_session_id?: string | null
           book_number?: string
           color_code?: string
           created_at?: string
+          created_by_ai?: boolean | null
           definition?: string
           id?: string
           notes?: string | null
@@ -46,7 +93,15 @@ export type Database = {
           updated_at?: string
           word?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "index_entries_ai_indexing_session_id_fkey"
+            columns: ["ai_indexing_session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_indexing_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pdf_files: {
         Row: {
