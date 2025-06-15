@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -106,6 +107,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
         headers['Authorization'] = `Bearer ${localApiKey.trim()}`;
       }
 
+      console.log('Testing connection to:', localOpenWebUIUrl.trim());
       const response = await fetch(`${localOpenWebUIUrl.trim()}/api/models`, {
         method: 'GET',
         headers,
@@ -113,26 +115,48 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Models API response:', data);
         
-        // Extract model names from the response
+        // Extract model names from the response - handle different response formats
         let modelNames: string[] = [];
+        
         if (data.data && Array.isArray(data.data)) {
           // OpenAI-compatible format
-          modelNames = data.data.map((model: any) => model.id || model.name).filter(Boolean);
+          modelNames = data.data
+            .map((model: any) => model.id || model.name)
+            .filter((name: string) => name && typeof name === 'string');
         } else if (Array.isArray(data)) {
           // Direct array format
-          modelNames = data.map((model: any) => model.id || model.name || model).filter(Boolean);
+          modelNames = data
+            .map((model: any) => {
+              if (typeof model === 'string') return model;
+              return model.id || model.name || model;
+            })
+            .filter((name: string) => name && typeof name === 'string');
         } else if (data.models && Array.isArray(data.models)) {
           // Models wrapper format
-          modelNames = data.models.map((model: any) => model.id || model.name || model).filter(Boolean);
+          modelNames = data.models
+            .map((model: any) => model.id || model.name || model)
+            .filter((name: string) => name && typeof name === 'string');
         }
 
-        if (modelNames.length > 0) {
-          setAvailableModels(modelNames);
+        // Remove duplicates and sort
+        const uniqueModels = [...new Set(modelNames)].sort();
+        
+        console.log('Extracted models:', uniqueModels);
+        
+        if (uniqueModels.length > 0) {
+          setAvailableModels(uniqueModels);
           setConnectionTestResult('success');
+          
+          // Auto-select first model if none is selected
+          if (!localSelectedModel && uniqueModels.length > 0) {
+            setLocalSelectedModel(uniqueModels[0]);
+          }
+          
           toast({
             title: "Connection Successful",
-            description: `Found ${modelNames.length} available models.`,
+            description: `Found ${uniqueModels.length} available models.`,
           });
         } else {
           setConnectionTestResult('success');
@@ -160,6 +184,11 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
 
   const handleStartIndexing = async () => {
     if (!localOpenWebUIUrl.trim() || !localSelectedModel) {
+      toast({
+        title: "Configuration Required",
+        description: "Please configure OpenWebUI settings and select a model first.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -167,6 +196,8 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
     setTotalPages(totalPagesToProcess);
     setProcessedPages(0);
     setIsProcessing(true);
+
+    console.log(`Starting AI indexing for pages ${startPage} to ${endPage}`);
 
     // Create a new AI indexing session
     createSession({
@@ -177,10 +208,12 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
       status: 'in_progress',
     }, {
       onSuccess: async (session) => {
+        console.log('AI indexing session created:', session);
         setActiveSession(session);
         await processPages(session, startPage, endPage);
       },
-      onError: () => {
+      onError: (error) => {
+        console.error('Failed to create AI indexing session:', error);
         setIsProcessing(false);
       }
     });
@@ -189,72 +222,90 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
   const processPages = async (session: any, start: number, end: number) => {
     try {
       for (let pageNum = start; pageNum <= end; pageNum++) {
-        if (!isProcessing) break;
+        if (!isProcessing) {
+          console.log('Processing stopped by user');
+          break;
+        }
 
         console.log(`Processing page ${pageNum}...`);
         
         // Extract text from the page
-        const pageText = await onExtractText(pageNum);
-        
-        if (!pageText.trim()) {
-          console.log(`Page ${pageNum} has no text, skipping...`);
+        try {
+          const pageText = await onExtractText(pageNum);
+          
+          if (!pageText.trim()) {
+            console.log(`Page ${pageNum} has no text, skipping...`);
+            continue;
+          }
+
+          console.log(`Extracted ${pageText.length} characters from page ${pageNum}`);
+          setExtractedText(pageText);
+
+          // Calculate actual page number with offset
+          const actualPageNumber = Math.max(1, pageNum - pageOffset);
+
+          // Send to AI for indexing
+          await new Promise<void>((resolve, reject) => {
+            console.log(`Sending page ${pageNum} to AI for indexing...`);
+            indexPageWithAI({
+              pageText,
+              pageNumber: actualPageNumber,
+              bookNumber,
+              openWebUIUrl: localOpenWebUIUrl.trim(),
+              apiKey: localApiKey.trim(),
+              model: localSelectedModel,
+            }, {
+              onSuccess: async (aiResponse) => {
+                console.log(`AI response for page ${pageNum}:`, aiResponse);
+                if (aiResponse.terms && aiResponse.terms.length > 0) {
+                  // Save the AI-generated terms
+                  await new Promise<void>((saveResolve, saveReject) => {
+                    saveAITerms({
+                      terms: aiResponse.terms,
+                      pageNumber: actualPageNumber,
+                      bookNumber,
+                      sessionId: session.id,
+                    }, {
+                      onSuccess: () => {
+                        console.log(`Successfully indexed ${aiResponse.terms.length} terms from page ${pageNum}`);
+                        saveResolve();
+                      },
+                      onError: (error) => {
+                        console.error(`Failed to save terms for page ${pageNum}:`, error);
+                        saveReject(error);
+                      }
+                    });
+                  });
+                }
+                resolve();
+              },
+              onError: (error) => {
+                console.error(`AI indexing failed for page ${pageNum}:`, error);
+                reject(error);
+              }
+            });
+          });
+
+          // Update progress
+          const newProcessedCount = pageNum - start + 1;
+          setProcessedPages(newProcessedCount);
+
+          // Update session progress
+          updateSession({
+            id: session.id,
+            updates: {
+              current_page: pageNum,
+              total_pages_processed: newProcessedCount,
+            }
+          });
+
+          // Small delay to prevent overwhelming the API
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (pageError) {
+          console.error(`Failed to process page ${pageNum}:`, pageError);
+          // Continue with next page instead of stopping completely
           continue;
         }
-
-        setExtractedText(pageText);
-
-        // Calculate actual page number with offset
-        const actualPageNumber = Math.max(1, pageNum - pageOffset);
-
-        // Send to AI for indexing
-        await new Promise<void>((resolve, reject) => {
-          indexPageWithAI({
-            pageText,
-            pageNumber: actualPageNumber,
-            bookNumber,
-            openWebUIUrl: localOpenWebUIUrl.trim(),
-            apiKey: localApiKey.trim(),
-            model: localSelectedModel,
-          }, {
-            onSuccess: async (aiResponse) => {
-              if (aiResponse.terms && aiResponse.terms.length > 0) {
-                // Save the AI-generated terms
-                await new Promise<void>((saveResolve, saveReject) => {
-                  saveAITerms({
-                    terms: aiResponse.terms,
-                    pageNumber: actualPageNumber,
-                    bookNumber,
-                    sessionId: session.id,
-                  }, {
-                    onSuccess: () => {
-                      console.log(`Successfully indexed ${aiResponse.terms.length} terms from page ${pageNum}`);
-                      saveResolve();
-                    },
-                    onError: saveReject
-                  });
-                });
-              }
-              resolve();
-            },
-            onError: reject
-          });
-        });
-
-        // Update progress
-        const newProcessedCount = pageNum - start + 1;
-        setProcessedPages(newProcessedCount);
-
-        // Update session progress
-        updateSession({
-          id: session.id,
-          updates: {
-            current_page: pageNum,
-            total_pages_processed: newProcessedCount,
-          }
-        });
-
-        // Small delay to prevent overwhelming the API
-        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       // Mark session as completed
@@ -267,6 +318,11 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
 
       setIsProcessing(false);
       setActiveSession(null);
+      
+      toast({
+        title: "AI Indexing Complete",
+        description: `Successfully processed ${end - start + 1} pages.`,
+      });
       
     } catch (error) {
       console.error('Error during AI indexing:', error);
@@ -283,10 +339,17 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
       
       setIsProcessing(false);
       setActiveSession(null);
+      
+      toast({
+        title: "AI Indexing Failed",
+        description: `Error occurred during batch processing: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
     }
   };
 
   const handleStopIndexing = () => {
+    console.log('Stopping AI indexing...');
     setIsProcessing(false);
     if (activeSession) {
       updateSession({
@@ -301,11 +364,17 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
 
   const handleIndexCurrentPage = async () => {
     if (!localOpenWebUIUrl.trim() || !localSelectedModel) {
+      toast({
+        title: "Configuration Required",
+        description: "Please configure OpenWebUI settings and select a model first.",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
       setIsProcessing(true);
+      console.log(`Indexing current page: ${currentPage}`);
       
       // Extract text from current page
       const pageText = await onExtractText(currentPage);
@@ -313,9 +382,16 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
       
       if (!pageText.trim()) {
         console.log('Current page has no text to index');
+        toast({
+          title: "No Text Found",
+          description: "The current page contains no extractable text.",
+          variant: "destructive",
+        });
         setIsProcessing(false);
         return;
       }
+
+      console.log(`Extracted ${pageText.length} characters from current page`);
 
       // Calculate actual page number with offset
       const actualPageNumber = Math.max(1, currentPage - pageOffset);
@@ -330,6 +406,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
         model: localSelectedModel,
       }, {
         onSuccess: async (aiResponse) => {
+          console.log('AI response for current page:', aiResponse);
           if (aiResponse.terms && aiResponse.terms.length > 0) {
             // Create a quick session for this single page
             createSession({
@@ -348,16 +425,27 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
                 });
               }
             });
+          } else {
+            toast({
+              title: "No Terms Found",
+              description: "AI could not identify any terms to index on this page.",
+            });
           }
           setIsProcessing(false);
         },
-        onError: () => {
+        onError: (error) => {
+          console.error('AI indexing failed for current page:', error);
           setIsProcessing(false);
         }
       });
     } catch (error) {
       console.error('Error indexing current page:', error);
       setIsProcessing(false);
+      toast({
+        title: "Indexing Failed",
+        description: `Failed to index current page: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -421,8 +509,8 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {availableModels.length > 0 ? (
-                    availableModels.map((model) => (
-                      <SelectItem key={model} value={model}>
+                    availableModels.map((model, index) => (
+                      <SelectItem key={`${model}-${index}`} value={model}>
                         {model}
                       </SelectItem>
                     ))
