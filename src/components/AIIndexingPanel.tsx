@@ -334,22 +334,24 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
           </div>
         )}
 
-        {/* Control Buttons */}
+        {/* Main Start Indexing Button */}
         <div className="flex gap-2">
           {!isProcessing ? (
             <Button
               onClick={handleStartIndexing}
               disabled={!canStartBatch}
-              className="flex-1 bg-blue-600 hover:bg-blue-700"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              size="lg"
             >
-              <Play className="h-4 w-4 mr-2" />
-              Start Batch Indexing
+              <Play className="h-5 w-5 mr-2" />
+              Start AI Indexing
             </Button>
           ) : (
             <Button
               onClick={handleStopIndexing}
-              variant="outline"
+              variant="destructive"
               className="flex-1"
+              size="lg"
             >
               <Square className="h-4 w-4 mr-2" />
               Stop Indexing
