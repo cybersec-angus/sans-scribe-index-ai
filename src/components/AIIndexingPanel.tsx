@@ -41,6 +41,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
   const [localOpenWebUIUrl, setLocalOpenWebUIUrl] = useState(getSettingValue('openwebui_url', ''));
   const [localApiKey, setLocalApiKey] = useState(getSettingValue('openwebui_api_key', ''));
   const [localSelectedModel, setLocalSelectedModel] = useState(getSettingValue('openwebui_model', ''));
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState<'success' | 'error' | null>(null);
   
@@ -94,6 +95,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
 
     setIsTestingConnection(true);
     setConnectionTestResult(null);
+    setAvailableModels([]);
 
     try {
       const headers: Record<string, string> = {
@@ -110,17 +112,42 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
       });
 
       if (response.ok) {
-        setConnectionTestResult('success');
-        toast({
-          title: "Connection Successful",
-          description: "Successfully connected to OpenWebUI.",
-        });
+        const data = await response.json();
+        
+        // Extract model names from the response
+        let modelNames: string[] = [];
+        if (data.data && Array.isArray(data.data)) {
+          // OpenAI-compatible format
+          modelNames = data.data.map((model: any) => model.id || model.name).filter(Boolean);
+        } else if (Array.isArray(data)) {
+          // Direct array format
+          modelNames = data.map((model: any) => model.id || model.name || model).filter(Boolean);
+        } else if (data.models && Array.isArray(data.models)) {
+          // Models wrapper format
+          modelNames = data.models.map((model: any) => model.id || model.name || model).filter(Boolean);
+        }
+
+        if (modelNames.length > 0) {
+          setAvailableModels(modelNames);
+          setConnectionTestResult('success');
+          toast({
+            title: "Connection Successful",
+            description: `Found ${modelNames.length} available models.`,
+          });
+        } else {
+          setConnectionTestResult('success');
+          toast({
+            title: "Connection Successful",
+            description: "Connected but no models found in the response.",
+          });
+        }
       } else {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
       console.error('Connection test failed:', error);
       setConnectionTestResult('error');
+      setAvailableModels([]);
       toast({
         title: "Connection Failed",
         description: `Failed to connect to OpenWebUI: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -390,18 +417,33 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
                 disabled={isProcessing}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a model" />
+                  <SelectValue placeholder={availableModels.length > 0 ? "Select a model" : "Test connection to load models"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="llama3.2">Llama 3.2</SelectItem>
-                  <SelectItem value="llama3.1">Llama 3.1</SelectItem>
-                  <SelectItem value="llama3">Llama 3</SelectItem>
-                  <SelectItem value="mixtral">Mixtral</SelectItem>
-                  <SelectItem value="codellama">CodeLlama</SelectItem>
-                  <SelectItem value="phi3">Phi-3</SelectItem>
-                  <SelectItem value="gemma2">Gemma 2</SelectItem>
+                  {availableModels.length > 0 ? (
+                    availableModels.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <>
+                      <SelectItem value="llama3.2">Llama 3.2</SelectItem>
+                      <SelectItem value="llama3.1">Llama 3.1</SelectItem>
+                      <SelectItem value="llama3">Llama 3</SelectItem>
+                      <SelectItem value="mixtral">Mixtral</SelectItem>
+                      <SelectItem value="codellama">CodeLlama</SelectItem>
+                      <SelectItem value="phi3">Phi-3</SelectItem>
+                      <SelectItem value="gemma2">Gemma 2</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
+              {availableModels.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {availableModels.length} models available from your OpenWebUI instance
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -432,7 +474,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   {connectionTestResult === 'success' 
-                    ? 'Connection successful! You can now use AI indexing.' 
+                    ? `Connection successful! ${availableModels.length > 0 ? `Found ${availableModels.length} models.` : 'You can now use AI indexing.'}` 
                     : 'Connection failed. Please check your URL and try again.'}
                 </AlertDescription>
               </Alert>
@@ -567,6 +609,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
           <p>• AI will identify key terms likely to appear on exams</p>
           <p>• Definitions will be kept to 2 sentences maximum</p>
           <p>• Terms are automatically added with green highlighting</p>
+          <p>• Test connection to automatically load available models</p>
         </div>
       </CardContent>
     </Card>
