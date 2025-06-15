@@ -957,6 +957,172 @@ const PDFViewer = () => {
         onSave={handleUpdateEntry}
         isUpdating={isUpdating}
       />
+
+      {/* Right Sidebar */}
+      <div className="w-80 bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
+        <div className="space-y-4 p-4">
+          {/* AI Indexing Panel */}
+          <AIIndexingPanel
+            pdfId={pdfId}
+            pdfName={currentPdf?.name || ''}
+            bookNumber={bookNumber}
+            currentPage={currentPage}
+            pageOffset={pageOffset}
+            onExtractText={onExtractText}
+          />
+
+          {/* Manual Entry Form */}
+          <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="book-number">Book Number</Label>
+                  <Input
+                    id="book-number"
+                    value={bookNumber}
+                    onChange={(e) => setBookNumber(e.target.value)}
+                    placeholder="e.g., SEC401, SEC503..."
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="definition">Definition</Label>
+                  <Textarea
+                    id="definition"
+                    value={definition}
+                    onChange={(e) => setDefinition(e.target.value)}
+                    placeholder="Enter the definition..."
+                    rows={3}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Additional notes..."
+                    rows={2}
+                  />
+                </div>
+
+                <div>
+                  <Label>Color Code</Label>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {colors.map((color) => (
+                      <button
+                        key={color.value}
+                        onClick={() => setColorCode(color.value)}
+                        className={`p-2 rounded-lg border-2 transition-all ${
+                          colorCode === color.value ? 'border-foreground' : 'border-border'
+                        } ${color.bg}`}
+                      >
+                        <div className="w-full h-4 rounded" style={{ backgroundColor: color.value }} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI Enhancement Section - Integrated from the old AI Enhancement panel */}
+                <div className="border-t border-border pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>AI Enhancement</Label>
+                    <Button
+                      onClick={handleAIEnhancement}
+                      variant="outline"
+                      size="sm"
+                      disabled={isEnhancing || !selectedWord || !definition || !selectedModel}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {isEnhancing ? 'Enhancing...' : 'Enhance with AI'}
+                    </Button>
+                  </div>
+                  {aiEnhancement && (
+                    <Textarea
+                      value={aiEnhancement}
+                      onChange={(e) => setAiEnhancement(e.target.value)}
+                      placeholder="AI enhancement will appear here..."
+                      rows={4}
+                      className="bg-blue-50 dark:bg-blue-950/20"
+                    />
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={saveDefinition}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </Button>
+                  <Button
+                    onClick={cancelDefining}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Index Entries List */}
+          <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
+            <CardContent className="p-4 h-full overflow-y-auto">
+              <div className="space-y-4">
+                {entries.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <BookOpen className="h-8 w-8 mx-auto mb-2" />
+                    <p className="text-sm">No definitions yet</p>
+                  </div>
+                ) : (
+                  entries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="p-3 border border-border rounded-lg bg-card/60 border-l-4"
+                      style={{ borderLeftColor: entry.color_code }}
+                    >
+                      <h4 className="font-semibold text-card-foreground mb-1">{entry.word}</h4>
+                      <p className="text-sm text-muted-foreground mb-2">{entry.definition}</p>
+                      {entry.ai_enrichment && (
+                        <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded mb-2">
+                          <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-1">AI Enhancement:</p>
+                          <p className="text-xs text-blue-700 dark:text-blue-300">{entry.ai_enrichment}</p>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
+                        <span>Page {entry.page_number}</span>
+                        <span>{entry.book_number}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditEntry(entry)}
+                          className="text-xs px-2 py-1 h-6"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteEntry(entry.id)}
+                          className="text-xs px-2 py-1 h-6 text-destructive hover:text-destructive-foreground"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };
