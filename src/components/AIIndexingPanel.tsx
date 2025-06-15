@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Brain, Play, Pause, Square, Zap, AlertCircle } from 'lucide-react';
+import { Brain, Play, Pause, Square, Zap, AlertCircle, Settings } from 'lucide-react';
 import { useAIIndexing } from '@/hooks/useAIIndexing';
 import { usePDFFiles } from '@/hooks/usePDFFiles';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -261,6 +260,17 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
   const canStartBatch = isConfigured && startPage <= endPage && !isProcessing;
   const canIndexCurrent = isConfigured && !isProcessing;
 
+  console.log('AI Indexing Panel Debug:', {
+    openWebUIUrl: openWebUIUrl?.slice(0, 20) + '...',
+    selectedModel,
+    isConfigured,
+    canStartBatch,
+    canIndexCurrent,
+    currentPage,
+    startPage,
+    endPage
+  });
+
   return (
     <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
       <CardHeader>
@@ -270,6 +280,28 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Configuration Status */}
+        <div className="p-3 rounded-lg bg-muted/50">
+          <div className="flex items-center gap-2 text-sm">
+            <Settings className="h-4 w-4" />
+            <span className="font-medium">Configuration Status</span>
+          </div>
+          <div className="mt-2 space-y-1 text-xs">
+            <div className="flex justify-between">
+              <span>OpenWebUI URL:</span>
+              <span className={openWebUIUrl.trim() ? 'text-green-600' : 'text-red-600'}>
+                {openWebUIUrl.trim() ? '✓ Configured' : '✗ Not set'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>AI Model:</span>
+              <span className={selectedModel ? 'text-green-600' : 'text-red-600'}>
+                {selectedModel ? `✓ ${selectedModel}` : '✗ Not selected'}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {!isConfigured && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
@@ -279,83 +311,95 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
           </Alert>
         )}
 
-        {/* Single Page Indexing */}
-        <div className="space-y-2">
-          <Label>Quick Index Current Page</Label>
+        {/* Single Page Indexing - Always Visible */}
+        <div className="space-y-3 p-4 border rounded-lg bg-background/50">
+          <Label className="text-base font-semibold">Quick Index Current Page</Label>
           <Button
             onClick={handleIndexCurrentPage}
             disabled={!canIndexCurrent}
-            className="w-full"
-            variant="outline"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400"
+            size="lg"
           >
             <Zap className="h-4 w-4 mr-2" />
             {isProcessing ? 'Indexing...' : `Index Page ${currentPage}`}
           </Button>
+          {!isConfigured && (
+            <p className="text-xs text-muted-foreground">
+              Configure OpenWebUI settings above to enable this feature
+            </p>
+          )}
         </div>
 
-        <div className="border-t border-border pt-4">
-          <Label className="text-sm font-medium">Batch Indexing</Label>
-        </div>
-
-        {/* Page Range Selection */}
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label htmlFor="start-page">Start Page</Label>
-            <Input
-              id="start-page"
-              type="number"
-              value={startPage}
-              onChange={(e) => setStartPage(parseInt(e.target.value) || 1)}
-              min="1"
-              disabled={isProcessing}
-            />
-          </div>
-          <div>
-            <Label htmlFor="end-page">End Page</Label>
-            <Input
-              id="end-page"
-              type="number"
-              value={endPage}
-              onChange={(e) => setEndPage(parseInt(e.target.value) || 1)}
-              min="1"
-              disabled={isProcessing}
-            />
-          </div>
-        </div>
-
-        {/* Progress Display */}
-        {isProcessing && totalPages > 0 && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Progress</span>
-              <span>{processedPages} of {totalPages} pages</span>
+        {/* Batch Indexing Section - Always Visible */}
+        <div className="space-y-3 p-4 border rounded-lg bg-background/50">
+          <Label className="text-base font-semibold">Batch Indexing</Label>
+          
+          {/* Page Range Selection */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label htmlFor="start-page">Start Page</Label>
+              <Input
+                id="start-page"
+                type="number"
+                value={startPage}
+                onChange={(e) => setStartPage(parseInt(e.target.value) || 1)}
+                min="1"
+                disabled={isProcessing}
+              />
             </div>
-            <Progress value={(processedPages / totalPages) * 100} />
+            <div>
+              <Label htmlFor="end-page">End Page</Label>
+              <Input
+                id="end-page"
+                type="number"
+                value={endPage}
+                onChange={(e) => setEndPage(parseInt(e.target.value) || 1)}
+                min="1"
+                disabled={isProcessing}
+              />
+            </div>
           </div>
-        )}
 
-        {/* Main Start Indexing Button */}
-        <div className="flex gap-2">
-          {!isProcessing ? (
-            <Button
-              onClick={handleStartIndexing}
-              disabled={!canStartBatch}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-              size="lg"
-            >
-              <Play className="h-5 w-5 mr-2" />
-              Start AI Indexing
-            </Button>
-          ) : (
-            <Button
-              onClick={handleStopIndexing}
-              variant="destructive"
-              className="flex-1"
-              size="lg"
-            >
-              <Square className="h-4 w-4 mr-2" />
-              Stop Indexing
-            </Button>
+          {/* Progress Display */}
+          {isProcessing && totalPages > 0 && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Progress</span>
+                <span>{processedPages} of {totalPages} pages</span>
+              </div>
+              <Progress value={(processedPages / totalPages) * 100} />
+            </div>
+          )}
+
+          {/* Main Start Indexing Button - Always Visible */}
+          <div className="flex gap-2">
+            {!isProcessing ? (
+              <Button
+                onClick={handleStartIndexing}
+                disabled={!canStartBatch}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400"
+                size="lg"
+              >
+                <Play className="h-5 w-5 mr-2" />
+                Start AI Indexing
+              </Button>
+            ) : (
+              <Button
+                onClick={handleStopIndexing}
+                variant="destructive"
+                className="flex-1"
+                size="lg"
+              >
+                <Square className="h-4 w-4 mr-2" />
+                Stop Indexing
+              </Button>
+            )}
+          </div>
+          
+          {!isConfigured && (
+            <p className="text-xs text-muted-foreground">
+              Configure OpenWebUI settings above to enable batch indexing
+            </p>
           )}
         </div>
 
@@ -381,7 +425,7 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
           </div>
         )}
 
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground border-t pt-3">
           <p>• AI will identify key terms likely to appear on exams</p>
           <p>• Definitions will be kept to 2 sentences maximum</p>
           <p>• Terms are automatically added with green highlighting</p>
