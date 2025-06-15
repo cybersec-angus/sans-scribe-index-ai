@@ -33,9 +33,14 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
   const { toast } = useToast();
   const { settings, updateSettings, isUpdating } = useUserSettings();
   
-  const [localOpenWebUIUrl, setLocalOpenWebUIUrl] = useState(settings?.openwebui_url || '');
-  const [localApiKey, setLocalApiKey] = useState(settings?.openwebui_api_key || '');
-  const [localSelectedModel, setLocalSelectedModel] = useState(settings?.openwebui_model || '');
+  // Handle the case where the new OpenWebUI fields might not exist yet
+  const getSettingValue = (key: string, defaultValue: string = '') => {
+    return (settings as any)?.[key] || defaultValue;
+  };
+  
+  const [localOpenWebUIUrl, setLocalOpenWebUIUrl] = useState(getSettingValue('openwebui_url', ''));
+  const [localApiKey, setLocalApiKey] = useState(getSettingValue('openwebui_api_key', ''));
+  const [localSelectedModel, setLocalSelectedModel] = useState(getSettingValue('openwebui_model', ''));
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState<'success' | 'error' | null>(null);
   
@@ -61,18 +66,20 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
   // Update local state when settings change
   React.useEffect(() => {
     if (settings) {
-      setLocalOpenWebUIUrl(settings.openwebui_url || '');
-      setLocalApiKey(settings.openwebui_api_key || '');
-      setLocalSelectedModel(settings.openwebui_model || '');
+      setLocalOpenWebUIUrl(getSettingValue('openwebui_url', ''));
+      setLocalApiKey(getSettingValue('openwebui_api_key', ''));
+      setLocalSelectedModel(getSettingValue('openwebui_model', ''));
     }
   }, [settings]);
 
   const handleSaveSettings = () => {
-    updateSettings({
+    const updates: any = {
       openwebui_url: localOpenWebUIUrl.trim(),
       openwebui_api_key: localApiKey.trim(),
       openwebui_model: localSelectedModel,
-    });
+    };
+
+    updateSettings(updates);
   };
 
   const handleTestConnection = async () => {
@@ -331,9 +338,9 @@ export const AIIndexingPanel: React.FC<AIIndexingPanelProps> = ({
   const canStartBatch = isConfigured && startPage <= endPage && !isProcessing;
   const canIndexCurrent = isConfigured && !isProcessing;
   const hasUnsavedChanges = 
-    localOpenWebUIUrl !== (settings?.openwebui_url || '') ||
-    localApiKey !== (settings?.openwebui_api_key || '') ||
-    localSelectedModel !== (settings?.openwebui_model || '');
+    localOpenWebUIUrl !== getSettingValue('openwebui_url', '') ||
+    localApiKey !== getSettingValue('openwebui_api_key', '') ||
+    localSelectedModel !== getSettingValue('openwebui_model', '');
 
   return (
     <Card className="shadow-lg border bg-card/80 backdrop-blur-sm">
