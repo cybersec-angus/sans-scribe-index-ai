@@ -89,7 +89,7 @@ const Index = () => {
         <div className="flex justify-between items-start mb-8">
           <div className="text-center flex-1">
             <h1 className="text-4xl font-bold text-foreground mb-4">
-              SANS Course Material Indexer
+              SANS Reckoner
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               Upload your SANS PDF course materials and create a comprehensive, searchable index 

@@ -68,7 +68,7 @@ const Auth = () => {
         <CardHeader className="text-center pb-2">
           <div className="flex items-center justify-center mb-2">
             <Shield className="h-8 w-8 text-primary mr-2" />
-            <CardTitle className="text-2xl font-bold">SANS Indexer</CardTitle>
+            <CardTitle className="text-2xl font-bold">SANS Reckoner</CardTitle>
           </div>
           <CardDescription>
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
