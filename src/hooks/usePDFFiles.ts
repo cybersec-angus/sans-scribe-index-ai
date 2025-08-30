@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 
 type PDFFile = Tables<'pdf_files'> & { file_url?: string };
@@ -55,6 +56,7 @@ const removePDFFile = (id: string): void => {
 
 export const usePDFFiles = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [uploadedFiles, setUploadedFiles] = useState<Map<string, File>>(new Map());
 
@@ -82,11 +84,14 @@ export const usePDFFiles = () => {
   }, []);
 
   const { data: pdfFiles = [], isLoading } = useQuery({
-    queryKey: ['pdf_files'],
+    queryKey: ['pdf_files', user?.id],
     queryFn: async () => {
+      if (!user) return [];
+      
       const { data, error } = await supabase
         .from('pdf_files')
         .select('*')
+        .eq('user_id', user.id)
         .order('upload_date', { ascending: false });
       
       if (error) {
@@ -96,6 +101,7 @@ export const usePDFFiles = () => {
       
       return data;
     },
+    enabled: !!user,
   });
 
   const uploadPDFFile = useMutation({
@@ -105,6 +111,8 @@ export const usePDFFiles = () => {
       bookNumber: string;
       pageOffset: number;
     }) => {
+      if (!user) throw new Error('User not authenticated');
+      
       console.log('Processing PDF file:', file.name, 'Course:', courseCode, 'Book:', bookNumber, 'Offset:', pageOffset);
       
       const pdfFileData: PDFFileInsert = {
@@ -113,6 +121,7 @@ export const usePDFFiles = () => {
         course_code: courseCode,
         page_offset: pageOffset,
         file_size: file.size,
+        user_id: user.id,
       };
 
       const { data, error } = await supabase
@@ -134,7 +143,7 @@ export const usePDFFiles = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['pdf_files'] });
+      queryClient.invalidateQueries({ queryKey: ['pdf_files', user?.id] });
       toast({
         title: "PDF Uploaded",
         description: `${data.file_name} has been successfully uploaded and configured.`,
@@ -152,10 +161,13 @@ export const usePDFFiles = () => {
 
   const deletePDFFile = useMutation({
     mutationFn: async (id: string) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { error } = await supabase
         .from('pdf_files')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
       
       if (error) throw error;
       
@@ -168,7 +180,7 @@ export const usePDFFiles = () => {
       removePDFFile(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pdf_files'] });
+      queryClient.invalidateQueries({ queryKey: ['pdf_files', user?.id] });
       toast({
         title: "PDF Deleted",
         description: "PDF file has been removed.",

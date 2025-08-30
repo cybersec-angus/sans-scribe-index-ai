@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
 type IndexEntry = Tables<'index_entries'>;
@@ -10,14 +11,18 @@ type IndexEntryUpdate = TablesUpdate<'index_entries'>;
 
 export const useIndexEntries = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: entries = [], isLoading } = useQuery({
-    queryKey: ['index_entries'],
+    queryKey: ['index_entries', user?.id],
     queryFn: async () => {
+      if (!user) return [];
+      
       const { data, error } = await supabase
         .from('index_entries')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -27,13 +32,19 @@ export const useIndexEntries = () => {
       
       return data;
     },
+    enabled: !!user,
   });
 
   const createEntry = useMutation({
     mutationFn: async (entry: IndexEntryInsert) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('index_entries')
-        .insert(entry)
+        .insert({
+          ...entry,
+          user_id: user.id,
+        })
         .select()
         .single();
       
@@ -41,7 +52,7 @@ export const useIndexEntries = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['index_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['index_entries', user?.id] });
       toast({
         title: "Definition Added",
         description: `"${data.word}" has been successfully indexed.`,
@@ -59,10 +70,13 @@ export const useIndexEntries = () => {
 
   const updateEntry = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: IndexEntryUpdate }) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('index_entries')
         .update(updates)
         .eq('id', id)
+        .eq('user_id', user.id)
         .select()
         .single();
       
@@ -70,7 +84,7 @@ export const useIndexEntries = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['index_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['index_entries', user?.id] });
       toast({
         title: "Definition Updated",
         description: `"${data.word}" has been successfully updated.`,
@@ -88,15 +102,18 @@ export const useIndexEntries = () => {
 
   const deleteEntry = useMutation({
     mutationFn: async (id: string) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { error } = await supabase
         .from('index_entries')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['index_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['index_entries', user?.id] });
       toast({
         title: "Definition Deleted",
         description: "The definition has been removed.",

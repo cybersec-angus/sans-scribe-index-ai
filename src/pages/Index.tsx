@@ -12,6 +12,7 @@ import { usePDFFiles } from "@/hooks/usePDFFiles";
 import { PDFUploadForm } from "@/components/PDFUploadForm";
 import { FlashcardViewer } from "@/components/FlashcardViewer";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/UserMenu";
 import { useState } from "react";
 
 const Index = () => {
@@ -84,7 +85,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       <div className="container mx-auto px-6 py-8">
-        {/* Header with Theme Toggle */}
+        {/* Header with Theme Toggle and User Menu */}
         <div className="flex justify-between items-start mb-8">
           <div className="text-center flex-1">
             <h1 className="text-4xl font-bold text-foreground mb-4">
@@ -95,8 +96,9 @@ const Index = () => {
               of definitions with AI-powered enrichment and smart organization.
             </p>
           </div>
-          <div className="ml-4">
+          <div className="flex items-center gap-2 ml-4">
             <ThemeToggle />
+            <UserMenu />
           </div>
         </div>
 

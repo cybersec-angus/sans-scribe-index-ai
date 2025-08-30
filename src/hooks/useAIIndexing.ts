@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 
 type AIIndexingSession = Tables<'ai_indexing_sessions'>;
@@ -28,14 +29,18 @@ interface AIIndexResponse {
 
 export const useAIIndexing = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: sessions = [], isLoading: isLoadingSessions } = useQuery({
-    queryKey: ['ai_indexing_sessions'],
+    queryKey: ['ai_indexing_sessions', user?.id],
     queryFn: async () => {
+      if (!user) return [];
+      
       const { data, error } = await supabase
         .from('ai_indexing_sessions')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -45,13 +50,19 @@ export const useAIIndexing = () => {
       
       return data;
     },
+    enabled: !!user,
   });
 
   const createSession = useMutation({
     mutationFn: async (session: AIIndexingSessionInsert) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { data, error } = await supabase
         .from('ai_indexing_sessions')
-        .insert(session)
+        .insert({
+          ...session,
+          user_id: user.id,
+        })
         .select()
         .single();
       
@@ -59,7 +70,7 @@ export const useAIIndexing = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['ai_indexing_sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['ai_indexing_sessions', user?.id] });
       toast({
         title: "AI Indexing Session Created",
         description: `Started indexing from page ${data.start_page}`,
@@ -88,7 +99,7 @@ export const useAIIndexing = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ai_indexing_sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['ai_indexing_sessions', user?.id] });
     },
     onError: (error) => {
       console.error('Error updating AI indexing session:', error);
@@ -197,6 +208,8 @@ Return format:
       bookNumber: string;
       sessionId: string;
     }) => {
+      if (!user) throw new Error('User not authenticated');
+      
       const entries = terms.map(term => ({
         word: term.word,
         definition: term.definition,
@@ -206,6 +219,7 @@ Return format:
         color_code: '#10b981', // Green color for AI-generated entries
         created_by_ai: true,
         ai_indexing_session_id: sessionId,
+        user_id: user.id,
       }));
 
       const { data, error } = await supabase
@@ -217,7 +231,7 @@ Return format:
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['index_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['index_entries', user?.id] });
       toast({
         title: "Terms Indexed",
         description: `Successfully indexed ${data.length} terms from the page.`,
